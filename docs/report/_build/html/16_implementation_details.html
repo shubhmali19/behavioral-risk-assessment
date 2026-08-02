@@ -1,0 +1,225 @@
+<!doctype html><html><head><meta charset='utf-8'><title>16_implementation_details</title><style>
+@page { size: A4; margin: 20mm 18mm 20mm 18mm; }
+@page :first { margin-top: 24mm; }
+html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+body {
+  font-family: "Charter", "Georgia", "Times New Roman", serif;
+  font-size: 10.5pt; line-height: 1.52; color: #14171a; margin: 0;
+  hyphens: auto; text-align: justify;
+}
+h1, h2, h3 { font-family: "Helvetica Neue", Arial, sans-serif; color: #0b0d0f; text-align: left; }
+h1 { font-size: 19pt; line-height: 1.2; margin: 0 0 1.1em; padding-bottom: .35em;
+     border-bottom: 2px solid #14171a; break-after: avoid; }
+h2 { font-size: 13pt; margin: 1.7em 0 .55em; break-after: avoid; }
+h3 { font-size: 11pt; margin: 1.3em 0 .45em; break-after: avoid; }
+p { margin: 0 0 .75em; orphans: 3; widows: 3; }
+strong { font-weight: 600; }
+a { color: #14171a; text-decoration: none; }
+
+/* Tables */
+table { border-collapse: collapse; width: 100%; margin: 1em 0 1.2em;
+        font-size: 9.2pt; break-inside: avoid; font-family: "Helvetica Neue", Arial, sans-serif; }
+thead { background: #f2f4f6; }
+th, td { border: 1px solid #ccd2d8; padding: 5px 8px; text-align: left; vertical-align: top; }
+th { font-weight: 600; }
+tbody tr:nth-child(even) { background: #fafbfc; }
+
+/* Code */
+code { font-family: "SF Mono", "Menlo", monospace; font-size: 8.8pt;
+       background: #f4f6f8; padding: 1px 4px; border-radius: 3px; }
+pre { background: #f7f9fa; border: 1px solid #e2e7ec; border-left: 3px solid #8b98a5;
+      padding: 9px 12px; border-radius: 3px; overflow-x: auto; break-inside: avoid;
+      font-size: 8.6pt; line-height: 1.42; text-align: left; }
+pre code { background: none; padding: 0; font-size: inherit; }
+
+/* Figure / screenshot callouts */
+blockquote { margin: .9em 0; padding: .6em .9em; background: #fffdf3;
+             border-left: 3px solid #d9b23a; font-size: 9.4pt; break-inside: avoid;
+             font-family: "Helvetica Neue", Arial, sans-serif; text-align: left; }
+blockquote p { margin: 0 0 .35em; }
+blockquote p:last-child { margin-bottom: 0; }
+
+/* Rendered mermaid diagrams */
+figure.diagram { margin: 1.2em 0; text-align: center; break-inside: avoid; page-break-inside: avoid; }
+figure.diagram svg { max-width: 100%; height: auto; }
+figure.diagram figcaption { font-size: 8.6pt; color: #5b6770; margin-top: .5em;
+                            font-family: "Helvetica Neue", Arial, sans-serif; }
+
+hr { border: none; border-top: 1px solid #dde2e7; margin: 1.6em 0; }
+ul, ol { margin: 0 0 .8em; padding-left: 1.4em; }
+li { margin-bottom: .22em; }
+.section-break { break-before: page; }
+</style></head><body><h1 id="16-implementation-details">16. Implementation Details</h1>
+<h2 id="161-repository-organisation">16.1 Repository Organisation</h2>
+<p>The project is a single repository containing five deployable or executable concerns, separated by directory rather than by package boundary.</p>
+<pre><code>behavioral-risk-assessment/
+  data/
+    raw/         generate_dataset.py, dataset.csv, dataset_description.md
+    processed/   preprocess.py, processed_dataset.csv, scaler.pkl, plots/
+  ml/
+    train.py, inference.py, test_inference.py
+    models/      risk_model.pkl, investment_model.pkl, label encoders,
+                 feature_columns.json, model_metadata.json,
+                 preprocessing_params.json
+    plots/       shap_summary.png, feature_importance.png
+  backend/
+    app/         main.py, config.py, database.py,
+                 routers/, services/, schemas/, models/, middleware/
+    Dockerfile, requirements.txt, .env.example
+  frontend/
+    src/         api/, pages/, components/, contexts/, types/
+    Dockerfile, nginx.conf, package.json
+  docs/
+    api-contract.json, report/
+  tests/
+    test_api.py, test_inference.py
+  docker-compose.yml
+</code></pre>
+<p>The <code>data</code> and <code>ml</code> directories are executed offline and produce artefacts. The <code>backend</code> and <code>frontend</code> directories are long-running services. Nothing in <code>backend</code> writes to <code>ml</code>; the dependency runs one way only.</p>
+<h2 id="162-toolchain">16.2 Toolchain</h2>
+<table>
+<thead>
+<tr>
+<th>Layer</th>
+<th>Technology</th>
+<th>Version</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Frontend framework</td>
+<td>React</td>
+<td>19</td>
+</tr>
+<tr>
+<td>Language</td>
+<td>TypeScript</td>
+<td>6.0</td>
+</tr>
+<tr>
+<td>Build tool</td>
+<td>Vite</td>
+<td>8</td>
+</tr>
+<tr>
+<td>Styling</td>
+<td>TailwindCSS</td>
+<td>3.4</td>
+</tr>
+<tr>
+<td>Charts</td>
+<td>Recharts</td>
+<td>3.9</td>
+</tr>
+<tr>
+<td>Forms and validation</td>
+<td>React Hook Form 7, Zod 4</td>
+<td></td>
+</tr>
+<tr>
+<td>Routing</td>
+<td>React Router</td>
+<td>7</td>
+</tr>
+<tr>
+<td>Backend framework</td>
+<td>FastAPI</td>
+<td>≥ 0.110</td>
+</tr>
+<tr>
+<td>ORM</td>
+<td>SQLAlchemy</td>
+<td>2.0</td>
+</tr>
+<tr>
+<td>Validation</td>
+<td>Pydantic</td>
+<td>2</td>
+</tr>
+<tr>
+<td>Database</td>
+<td>PostgreSQL 15 / SQLite 3</td>
+<td></td>
+</tr>
+<tr>
+<td>ML</td>
+<td>scikit-learn, XGBoost, LightGBM, CatBoost, SHAP</td>
+<td></td>
+</tr>
+<tr>
+<td>Orchestration</td>
+<td>Docker Compose</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p>Radix UI primitives underpin the select, dialog, progress and tooltip components. Linting uses <code>oxlint</code>.</p>
+<h2 id="163-configuration">16.3 Configuration</h2>
+<p>Runtime configuration is read from environment variables through a <code>pydantic-settings</code> model, with <code>.env</code> as a fallback source and defaults suitable for local development.</p>
+<table>
+<thead>
+<tr>
+<th>Variable</th>
+<th>Default</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>DATABASE_URL</code></td>
+<td><code>sqlite:///./risk_assessment.db</code></td>
+<td>connection string</td>
+</tr>
+<tr>
+<td><code>ML_PATH</code></td>
+<td><code>/ml</code></td>
+<td>location of the inference module</td>
+</tr>
+<tr>
+<td><code>SECRET_KEY</code></td>
+<td><code>dev-secret-key</code></td>
+<td>declared, currently unused</td>
+</tr>
+<tr>
+<td><code>LOG_LEVEL</code></td>
+<td><code>INFO</code></td>
+<td>logging verbosity</td>
+</tr>
+<tr>
+<td><code>VERSION</code></td>
+<td><code>1.0.0</code></td>
+<td>reported by <code>/health</code></td>
+</tr>
+</tbody>
+</table>
+<p><code>SECRET_KEY</code> is defined in the settings model but referenced nowhere in the codebase. It was provisioned for a session or token mechanism that was not implemented, and it is retained only because removing it would require a corresponding change to the deployment templates. It signs nothing.</p>
+<h2 id="164-deployment">16.4 Deployment</h2>
+<p>Three containers are composed. PostgreSQL exposes 5432 and declares a <code>pg_isready</code> health check; the backend declares <code>depends_on</code> with <code>condition: service_healthy</code>, so it does not start against a database still initialising. The backend mounts <code>./ml</code> at <code>/ml</code> — this bind mount is what makes the model available to the service, and the container will start without it but report <code>model_loaded: false</code> from <code>/health</code> and return 503 from <code>/predict</code>.</p>
+<p>The frontend is built in a multi-stage image: a Node stage compiles the TypeScript and produces static assets; an nginx stage serves them. The nginx configuration proxies <code>/api/</code> to the backend service and rewrites unmatched paths to <code>index.html</code>, which is required for client-side routing to survive a page reload.</p>
+<p>Two adjustments were necessary to make the compose stack build. The frontend Dockerfile originally invoked <code>npm ci</code>, which aborts when <code>package-lock.json</code> and <code>package.json</code> disagree; the lockfile in the repository had drifted, and the instruction was changed to <code>npm install</code>. Separately, the backend image did not install NumPy, pandas, scikit-learn or SHAP, because <code>requirements.txt</code> listed only the web dependencies. The ML packages were added, since the backend imports the inference module directly into its own process.</p>
+<h2 id="165-offline-pipeline-execution">16.5 Offline Pipeline Execution</h2>
+<p>The three offline scripts are run in sequence and are individually idempotent under their fixed seed.</p>
+<pre><code class="language-bash">cd data/raw       &amp;&amp; python3 generate_dataset.py    # → dataset.csv
+cd ../processed   &amp;&amp; python3 preprocess.py          # → processed_dataset.csv
+                                                     #   preprocessing_params.json
+cd ../../ml       &amp;&amp; python3 train.py               # → models/*.pkl, metadata
+</code></pre>
+<p>Re-running <code>preprocess.py</code> after the parameter-persistence change was verified to leave <code>processed_dataset.csv</code> byte-identical, which is the reason the existing trained model remained valid and no retraining was required when the serving defects described in Section 22 were repaired.</p>
+<h2 id="166-testing">16.6 Testing</h2>
+<p>Eleven tests exist across two files.</p>
+<p><code>tests/test_inference.py</code> holds five unit tests exercising <code>predict()</code> directly, without a server. They assert that all twelve expected keys are present in the returned dictionary, that <code>risk_category</code> is one of the three permitted labels, that both confidence values lie in [0, 1], that the three scores lie in [0, 100], and that at least one recommendation is produced.</p>
+<p><code>tests/test_api.py</code> holds six integration tests requiring a running service. They cover <code>/health</code>, <code>/model/info</code>, a successful <code>/predict</code>, an assessment round trip through <code>POST /assessment</code> followed by <code>GET /assessment/{id}</code>, the <code>/analytics</code> aggregate, and one negative case asserting that an <code>age</code> of 10 is rejected with HTTP 422.</p>
+<p>Coverage is thin and should be described as such. There are no tests for the preprocessing scripts, none for the frontend, and none that would have caught any of the five feature-engineering defects discussed in Section 22 — because every one of those defects lay in the agreement between two code paths, and no test compared them. The equivalence check that eventually exposed them, described in Section 9.7, is not part of the automated suite. Promoting it to a regression test would be the single most valuable addition to this repository.</p>
+<h2 id="167-defects-identified-during-documentation">16.7 Defects Identified During Documentation</h2>
+<p>Writing this report required reading the implementation closely, and doing so surfaced defects that the test suite had not. Three are recorded here because they affect the backend as deployed; the five feature-engineering defects are treated in Section 22, and the data-loading defect in Section 12.5.</p>
+<p><strong>The <code>/model/info</code> endpoint reads an absolute path from the author's machine.</strong> <code>backend/app/routers/health.py</code> defines <code>MODEL_METADATA_PATH</code> as <code>/Users/chiragmali/Documents/.../ml/models/model_metadata.json</code>. Inside the container this path does not exist, so the endpoint returns <code>{"error": "model_metadata.json not found"}</code> with HTTP 200 rather than the metadata. It works when the service runs directly on the development machine and fails under Docker Compose, which is the documented deployment path. It should resolve the path relative to <code>ML_PATH</code>, as <code>ml_service</code> does.</p>
+<p><strong>The local-development fallback in <code>ml_service</code> resolves one directory too high.</strong> When <code>/ml</code> is absent the module constructs a fallback path by ascending four levels from <code>app/services/</code>, which lands on the repository's parent directory rather than the repository root. The resulting path does not exist, the import fails, and <code>/predict</code> returns 503. The defect is invisible under Docker Compose, where <code>/ml</code> is always mounted and the fallback never executes.</p>
+<p><strong>The audit middleware performs a synchronous database write inside an asynchronous handler.</strong> <code>LoggingMiddleware.dispatch</code> is a coroutine, but it opens a SQLAlchemy session and commits without yielding, which blocks the event loop for the duration of the write on every request. The inline comment describes the write as "non-blocking best-effort"; it is best-effort, in that a failure is swallowed, but it is not non-blocking. The middleware additionally persists the entire request body to <code>audit_logs</code>, which for <code>POST /assessment</code> means storing twenty-six fields of a user's financial position in a table that carries no access control.</p>
+<p>None of the three affects the accuracy figures reported in Section 23, because none touches the prediction path in the configuration under which those figures were produced.</p>
+<hr />
+<blockquote>
+<p><strong>Figure 16.1</strong> — <em>Repository tree,</em> rendered as a directory listing. Trim to two levels. Place in Section 16.1.</p>
+<p><strong>Screenshot 16.1</strong> — <em><code>docker compose up</code> reaching a healthy state,</em> showing all three containers running and the backend log line <code>ML models loaded and ready.</code> Place in Section 16.4.</p>
+<p><strong>Screenshot 16.2</strong> — <em>Terminal output of <code>python3 -m pytest tests/ -v</code>,</em> showing all eleven tests passing. Place in Section 16.6.</p>
+<p><strong>Table 16.1</strong> — <em>Environment variables,</em> reproducing the table in Section 16.3 with an added column stating whether each is consumed by code. Mark <code>SECRET_KEY</code> as unused.</p>
+</blockquote></body></html>

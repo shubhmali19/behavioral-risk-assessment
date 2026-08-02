@@ -1,0 +1,180 @@
+{
+  "_readme": "This is the single source of truth for the API contract between frontend and backend. Before adding or changing any endpoint: update this file first, get agreement, then implement on both sides. Frontend types in src/types/index.ts and backend Pydantic schemas in app/schemas/assessment.py must always match this document.",
+
+  "baseURL": "http://localhost:8000",
+
+  "envelope": {
+    "_note": "All responses are wrapped in this envelope",
+    "success": "boolean",
+    "data": "object — the actual payload (see each endpoint)"
+  },
+
+  "endpoints": {
+
+    "POST /predict": {
+      "description": "Run ML prediction without saving to DB. Used for live preview on Assessment form.",
+      "request": {
+        "Content-Type": "application/json",
+        "body": "$AssessmentInput"
+      },
+      "response": {
+        "success": true,
+        "data": "$PredictionResult"
+      },
+      "errors": {
+        "422": "Validation error — invalid field value",
+        "503": "ML model not loaded"
+      }
+    },
+
+    "POST /assessment": {
+      "description": "Run prediction AND persist to database. Returns assessment_id for later retrieval.",
+      "request": {
+        "Content-Type": "application/json",
+        "body": "$AssessmentInput"
+      },
+      "response": {
+        "success": true,
+        "assessment_id": "string (UUID)",
+        "data": "$PredictionResult"
+      },
+      "errors": {
+        "422": "Validation error",
+        "500": "Prediction or DB write failed"
+      }
+    },
+
+    "GET /assessment/{assessment_id}": {
+      "description": "Retrieve a previously saved assessment and its prediction.",
+      "response": {
+        "success": true,
+        "assessment_id": "string (UUID)",
+        "data": "$PredictionResult"
+      },
+      "errors": {
+        "404": "Assessment not found"
+      }
+    },
+
+    "GET /assessments": {
+      "description": "Paginated list of past assessments.",
+      "queryParams": {
+        "limit": "integer, default 20, max 100",
+        "offset": "integer, default 0"
+      },
+      "response": {
+        "success": true,
+        "total": "integer",
+        "items": ["$AssessmentRecord"]
+      }
+    },
+
+    "GET /analytics": {
+      "description": "Aggregate statistics across all stored assessments.",
+      "response": "$AnalyticsResponse"
+    },
+
+    "GET /health": {
+      "description": "Liveness check.",
+      "response": {
+        "status": "healthy",
+        "model_loaded": "boolean",
+        "database": "string — connected | error",
+        "version": "string"
+      }
+    },
+
+    "GET /model/info": {
+      "description": "Metadata about the currently loaded ML model.",
+      "response": {
+        "best_model_name": "string",
+        "accuracy": "float",
+        "precision": "float",
+        "recall": "float",
+        "f1_score": "float",
+        "roc_auc": "float",
+        "cv_f1_mean": "float",
+        "cv_f1_std": "float",
+        "training_date": "string (ISO 8601)",
+        "n_features": "integer",
+        "n_samples": "integer",
+        "class_names": ["Low", "Medium", "High"],
+        "feature_importance_top10": "Record<string, float>"
+      }
+    }
+
+  },
+
+  "schemas": {
+
+    "AssessmentInput": {
+      "_note": "26 fields — all required. Exact Literal values must match.",
+      "age": "integer, min 18, max 100",
+      "gender": "Male | Female | Other",
+      "education": "High School | Graduate | Post Graduate | PhD",
+      "occupation": "Salaried | Self-Employed | Business | Freelancer | Student | Retired",
+      "income_level": "Low | Middle | High",
+      "marital_status": "Single | Married | Divorced | Widowed",
+      "dependents": "integer, min 0, max 10",
+      "location": "Urban | Semi-Urban | Rural",
+      "employment_type": "Full-Time | Part-Time | Contract | Unemployed",
+      "years_of_experience": "integer, min 0, max 50",
+      "monthly_income": "float, gt 0",
+      "monthly_expenses": "float, gt 0",
+      "savings_rate": "float, min 0, max 100",
+      "emergency_fund_months": "float, min 0, max 36",
+      "total_debt": "float, min 0",
+      "loan_amount": "float, min 0",
+      "credit_score": "integer, min 300, max 900",
+      "investment_experience_years": "float, min 0, max 50",
+      "investment_frequency": "Never | Rarely | Monthly | Weekly",
+      "insurance_coverage": "None | Basic | Comprehensive",
+      "shopping_frequency": "Rarely | Monthly | Weekly | Daily",
+      "online_spending_pct": "float, min 0, max 100",
+      "luxury_spending_pct": "float, min 0, max 100",
+      "subscription_count": "integer, min 0, max 30",
+      "gaming_expenses_monthly": "float, min 0",
+      "travel_expenses_annual": "float, min 0"
+    },
+
+    "PredictionResult": {
+      "_note": "Returned inside data: {} envelope on /predict and /assessment",
+      "risk_category": "Low | Medium | High",
+      "risk_confidence": "float (0–1) — probability of the predicted class",
+      "risk_probabilities": "Record<'Low'|'Medium'|'High', float>",
+      "investment_preference": "FD | Mutual Funds | Stocks | Gold | Crypto",
+      "investment_confidence": "float (0–1)",
+      "financial_decision_score": "float (0–100)",
+      "behavioral_composite_score": "float (0–100)",
+      "financial_discipline_score": "float (0–100)",
+      "shap_values": "Record<string, float> — top 10 features",
+      "feature_importance": "Record<string, float> — top 10 features",
+      "recommendations": "string[] — 3 to 5 items",
+      "behavioral_biases": "string[] — may be empty"
+    },
+
+    "AssessmentRecord": {
+      "_note": "Used in GET /assessments list items",
+      "id": "string (UUID)",
+      "created_at": "string (ISO 8601)",
+      "status": "pending | completed | failed",
+      "age": "integer | null",
+      "gender": "string | null",
+      "income_level": "string | null",
+      "prediction": "$PredictionResult | null"
+    },
+
+    "AnalyticsResponse": {
+      "total_assessments": "integer",
+      "risk_distribution": "Record<'Low'|'Medium'|'High', integer>",
+      "investment_distribution": "Record<string, integer>",
+      "avg_financial_decision_score": "float",
+      "avg_behavioral_composite_score": "float",
+      "avg_financial_discipline_score": "float",
+      "assessments_by_date": [
+        { "date": "string YYYY-MM-DD", "count": "integer" }
+      ]
+    }
+
+  }
+}

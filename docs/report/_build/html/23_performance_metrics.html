@@ -1,0 +1,251 @@
+<!doctype html><html><head><meta charset='utf-8'><title>23_performance_metrics</title><style>
+@page { size: A4; margin: 20mm 18mm 20mm 18mm; }
+@page :first { margin-top: 24mm; }
+html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+body {
+  font-family: "Charter", "Georgia", "Times New Roman", serif;
+  font-size: 10.5pt; line-height: 1.52; color: #14171a; margin: 0;
+  hyphens: auto; text-align: justify;
+}
+h1, h2, h3 { font-family: "Helvetica Neue", Arial, sans-serif; color: #0b0d0f; text-align: left; }
+h1 { font-size: 19pt; line-height: 1.2; margin: 0 0 1.1em; padding-bottom: .35em;
+     border-bottom: 2px solid #14171a; break-after: avoid; }
+h2 { font-size: 13pt; margin: 1.7em 0 .55em; break-after: avoid; }
+h3 { font-size: 11pt; margin: 1.3em 0 .45em; break-after: avoid; }
+p { margin: 0 0 .75em; orphans: 3; widows: 3; }
+strong { font-weight: 600; }
+a { color: #14171a; text-decoration: none; }
+
+/* Tables */
+table { border-collapse: collapse; width: 100%; margin: 1em 0 1.2em;
+        font-size: 9.2pt; break-inside: avoid; font-family: "Helvetica Neue", Arial, sans-serif; }
+thead { background: #f2f4f6; }
+th, td { border: 1px solid #ccd2d8; padding: 5px 8px; text-align: left; vertical-align: top; }
+th { font-weight: 600; }
+tbody tr:nth-child(even) { background: #fafbfc; }
+
+/* Code */
+code { font-family: "SF Mono", "Menlo", monospace; font-size: 8.8pt;
+       background: #f4f6f8; padding: 1px 4px; border-radius: 3px; }
+pre { background: #f7f9fa; border: 1px solid #e2e7ec; border-left: 3px solid #8b98a5;
+      padding: 9px 12px; border-radius: 3px; overflow-x: auto; break-inside: avoid;
+      font-size: 8.6pt; line-height: 1.42; text-align: left; }
+pre code { background: none; padding: 0; font-size: inherit; }
+
+/* Figure / screenshot callouts */
+blockquote { margin: .9em 0; padding: .6em .9em; background: #fffdf3;
+             border-left: 3px solid #d9b23a; font-size: 9.4pt; break-inside: avoid;
+             font-family: "Helvetica Neue", Arial, sans-serif; text-align: left; }
+blockquote p { margin: 0 0 .35em; }
+blockquote p:last-child { margin-bottom: 0; }
+
+/* Rendered mermaid diagrams */
+figure.diagram { margin: 1.2em 0; text-align: center; break-inside: avoid; page-break-inside: avoid; }
+figure.diagram svg { max-width: 100%; height: auto; }
+figure.diagram figcaption { font-size: 8.6pt; color: #5b6770; margin-top: .5em;
+                            font-family: "Helvetica Neue", Arial, sans-serif; }
+
+hr { border: none; border-top: 1px solid #dde2e7; margin: 1.6em 0; }
+ul, ol { margin: 0 0 .8em; padding-left: 1.4em; }
+li { margin-bottom: .22em; }
+.section-break { break-before: page; }
+</style></head><body><h1 id="23-performance-metrics">23. Performance Metrics</h1>
+<h2 id="231-choice-of-metrics">23.1 Choice of Metrics</h2>
+<p>Accuracy is reported but is not the criterion. With classes at 35 / 45 / 20, a constant predictor reaches 45%, and any accuracy figure must be read against that floor rather than against zero.</p>
+<p>Weighted F1 is the selection criterion. It averages the per-class harmonic mean of precision and recall, weighting each class by its support, and so penalises a model that achieves accuracy by neglecting the minority band. Macro F1 is also reported, since it weights the three classes equally and therefore exposes the <em>High</em>-class weakness that the weighted figure partially conceals.</p>
+<p>ROC AUC is computed one-vs-rest. It measures the ranking quality of the predicted probabilities independently of the decision threshold, which matters here because the interface displays a confidence value and Section 24 argues that the operating threshold should be reconsidered.</p>
+<h2 id="232-classification-report">23.2 Classification Report</h2>
+<p>Tuned Random Forest, held-out partition of 4,400 records.</p>
+<table>
+<thead>
+<tr>
+<th>Class</th>
+<th>Precision</th>
+<th>Recall</th>
+<th>F1</th>
+<th>Support</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Low</td>
+<td>0.6565</td>
+<td>0.5883</td>
+<td>0.6205</td>
+<td>1,540</td>
+</tr>
+<tr>
+<td>Medium</td>
+<td>0.5554</td>
+<td>0.6934</td>
+<td>0.6168</td>
+<td>1,980</td>
+</tr>
+<tr>
+<td>High</td>
+<td>0.6898</td>
+<td>0.4295</td>
+<td>0.5294</td>
+<td>880</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td><strong>Accuracy</strong></td>
+<td></td>
+<td></td>
+<td><strong>0.6039</strong></td>
+<td>4,400</td>
+</tr>
+<tr>
+<td>Macro average</td>
+<td>0.6339</td>
+<td>0.5704</td>
+<td>0.5889</td>
+<td>4,400</td>
+</tr>
+<tr>
+<td>Weighted average</td>
+<td>0.6177</td>
+<td>0.6039</td>
+<td>0.6006</td>
+<td>4,400</td>
+</tr>
+</tbody>
+</table>
+<p>The gap between macro F1 (0.5889) and weighted F1 (0.6006) is entirely attributable to the <em>High</em> class, whose F1 of 0.5294 trails the other two by nine points.</p>
+<p>The shape of that deficit matters more than its size. <em>High</em> carries the <strong>highest precision of any class</strong> at 0.6898 and the <strong>lowest recall</strong> at 0.4295. When the model announces high risk it is usually correct; it announces it for fewer than half the individuals who warrant it. Section 22.2 shows that this is the Bayes-optimal response to threshold noise rather than a learned bias, and Section 24 argues it is nonetheless the wrong operating point for the application.</p>
+<h2 id="233-discrimination">23.3 Discrimination</h2>
+<table>
+<thead>
+<tr>
+<th>Metric</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>ROC AUC, one-vs-rest, weighted</td>
+<td>0.7461</td>
+</tr>
+<tr>
+<td>ROC AUC, one-vs-rest, macro</td>
+<td>0.7712</td>
+</tr>
+</tbody>
+</table>
+<p>Macro AUC exceeds weighted AUC, which is the reverse of the usual pattern and is informative. AUC measures ranking, not thresholded decisions. The model ranks <em>High</em>-risk individuals well — it assigns them elevated probabilities — even though the argmax rule rarely selects that class for them. The information required to identify high-risk individuals is present in the probability vector and is discarded by taking the maximum.</p>
+<p>This is the quantitative basis for the recommendation in Section 24 that the interface should threshold on <code>P(High)</code> rather than report the argmax.</p>
+<h2 id="234-stability">23.4 Stability</h2>
+<p>Five-fold stratified cross-validation on the tuned model over the full 22,000 records:</p>
+<table>
+<thead>
+<tr>
+<th>Statistic</th>
+<th>Weighted F1</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Mean</td>
+<td>0.5996</td>
+</tr>
+<tr>
+<td>Standard deviation</td>
+<td>0.0032</td>
+</tr>
+</tbody>
+</table>
+<p>The held-out estimate of 0.6006 lies within a third of a standard deviation of the cross-validated mean, so the reported performance is not an artefact of the particular 80/20 split. A standard deviation of 0.0032 across folds also sets the scale against which differences between models should be judged: the 1.76-point F1 gap between the Random Forest and LightGBM is roughly five standard deviations and is real, whereas the 0.03-point gap between LightGBM and CatBoost is not.</p>
+<p>That same scale governs the insurance-category defect of Section 12.5. Restoring the destroyed <code>None</code> level changes weighted F1 from 0.5955 to 0.5915, a difference of 0.0040 — approximately one standard deviation, and therefore not distinguishable from fold-to-fold variation.</p>
+<h2 id="235-performance-against-the-attainable-ceiling">23.5 Performance Against the Attainable Ceiling</h2>
+<p>Reporting accuracy against a ceiling of 1.0 is misleading for a label that is roughly half noise by construction. The Bayes-optimal accuracy derived in Section 22.2 provides the correct denominator.</p>
+<table>
+<thead>
+<tr>
+<th>Reference point</th>
+<th>Accuracy</th>
+<th>Interpretation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Random guessing (uniform)</td>
+<td>0.3333</td>
+<td>no information</td>
+</tr>
+<tr>
+<td>Majority class (always <em>Medium</em>)</td>
+<td>0.4500</td>
+<td>prior only</td>
+</tr>
+<tr>
+<td><strong>Tuned Random Forest</strong></td>
+<td><strong>0.6039</strong></td>
+<td>—</td>
+</tr>
+<tr>
+<td><strong>Bayes-optimal ceiling</strong></td>
+<td><strong>0.6104</strong></td>
+<td>maximum attainable</td>
+</tr>
+</tbody>
+</table>
+<p>Normalising the model's position between the majority baseline and the ceiling:</p>
+<pre><code>(0.6039 − 0.4500) / (0.6104 − 0.4500)  =  0.9595
+</code></pre>
+<p>The Random Forest captures <strong>95.9% of the accuracy that is available to be captured</strong> above the trivial baseline, and reaches 98.9% of the absolute ceiling. Interpreting 0.6039 as a weak result mistakes the noise floor of the data for a shortcoming of the model.</p>
+<p>This framing depends entirely on the label being synthetic and its generating function being known. It is available here precisely because the data was constructed, and it would not be available for a real dataset. That is one of the few advantages a synthetic study confers, and Section 24 discusses what is given up in exchange.</p>
+<h2 id="236-secondary-model">23.6 Secondary Model</h2>
+<table>
+<thead>
+<tr>
+<th>Metric</th>
+<th>Investment-preference model</th>
+<th>Reference</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Accuracy</td>
+<td>0.2586</td>
+<td>majority baseline 0.2869</td>
+</tr>
+<tr>
+<td>Weighted F1</td>
+<td>0.1892</td>
+<td>—</td>
+</tr>
+<tr>
+<td>ROC AUC (ovr, weighted)</td>
+<td>0.4949</td>
+<td>chance 0.5000</td>
+</tr>
+<tr>
+<td>Ceiling given predicted risk</td>
+<td>≈ 0.3210</td>
+<td>—</td>
+</tr>
+<tr>
+<td>Ceiling given perfect risk</td>
+<td>0.3675</td>
+<td>—</td>
+</tr>
+</tbody>
+</table>
+<p>The model performs below the majority baseline and ranks at chance. Section 22.3 establishes that the label was constructed without reference to any feature, so this is a property of the target rather than of the estimator. No metric in this table should be cited as evidence about the predictability of investment preference in general.</p>
+<h2 id="237-serving-latency">23.7 Serving Latency</h2>
+<p>Latency was not measured systematically and no benchmark is reported. Each prediction loads no artefacts — models are cached at process start — but does construct a <code>TreeExplainer</code> and compute exact Shapley values for one row against a 200-tree ensemble of depth 10, which dominates the request cost. The audit-log write described in Section 20.6 executes synchronously on the event loop and adds a database round trip to every request.</p>
+<p>Both are addressable: the explainer can be constructed once and reused, and the audit write can be dispatched to a background task. Neither was done, and the omission of any latency measurement is recorded in Section 26.</p>
+<hr />
+<blockquote>
+<p><strong>Figure 23.1</strong> — <em>Per-class precision and recall,</em> grouped bars across Low / Medium / High. The inversion on <em>High</em> — precision high, recall low — is the point. Place in Section 23.2.</p>
+<p><strong>Figure 23.2</strong> — <em>ROC curves, one-vs-rest,</em> three classes plus macro-average and the chance diagonal. Shared with Figure 15.2; render once. Place in Section 23.3.</p>
+<p><strong>Figure 23.3</strong> — <em>Model accuracy against reference points,</em> a horizontal bar or number-line showing 0.3333, 0.4500, 0.6039 and 0.6104, with the interval between baseline and ceiling shaded. This visualises the 95.9% figure and is the most important chart in the chapter. Place in Section 23.5.</p>
+<p><strong>Figure 23.4</strong> — <em>Cross-validation fold scores,</em> five points with the mean and ±1 s.d. band. Place in Section 23.4.</p>
+</blockquote></body></html>

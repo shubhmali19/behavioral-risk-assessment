@@ -1,0 +1,142 @@
+<!doctype html><html><head><meta charset='utf-8'><title>10_system_architecture</title><style>
+@page { size: A4; margin: 20mm 18mm 20mm 18mm; }
+@page :first { margin-top: 24mm; }
+html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+body {
+  font-family: "Charter", "Georgia", "Times New Roman", serif;
+  font-size: 10.5pt; line-height: 1.52; color: #14171a; margin: 0;
+  hyphens: auto; text-align: justify;
+}
+h1, h2, h3 { font-family: "Helvetica Neue", Arial, sans-serif; color: #0b0d0f; text-align: left; }
+h1 { font-size: 19pt; line-height: 1.2; margin: 0 0 1.1em; padding-bottom: .35em;
+     border-bottom: 2px solid #14171a; break-after: avoid; }
+h2 { font-size: 13pt; margin: 1.7em 0 .55em; break-after: avoid; }
+h3 { font-size: 11pt; margin: 1.3em 0 .45em; break-after: avoid; }
+p { margin: 0 0 .75em; orphans: 3; widows: 3; }
+strong { font-weight: 600; }
+a { color: #14171a; text-decoration: none; }
+
+/* Tables */
+table { border-collapse: collapse; width: 100%; margin: 1em 0 1.2em;
+        font-size: 9.2pt; break-inside: avoid; font-family: "Helvetica Neue", Arial, sans-serif; }
+thead { background: #f2f4f6; }
+th, td { border: 1px solid #ccd2d8; padding: 5px 8px; text-align: left; vertical-align: top; }
+th { font-weight: 600; }
+tbody tr:nth-child(even) { background: #fafbfc; }
+
+/* Code */
+code { font-family: "SF Mono", "Menlo", monospace; font-size: 8.8pt;
+       background: #f4f6f8; padding: 1px 4px; border-radius: 3px; }
+pre { background: #f7f9fa; border: 1px solid #e2e7ec; border-left: 3px solid #8b98a5;
+      padding: 9px 12px; border-radius: 3px; overflow-x: auto; break-inside: avoid;
+      font-size: 8.6pt; line-height: 1.42; text-align: left; }
+pre code { background: none; padding: 0; font-size: inherit; }
+
+/* Figure / screenshot callouts */
+blockquote { margin: .9em 0; padding: .6em .9em; background: #fffdf3;
+             border-left: 3px solid #d9b23a; font-size: 9.4pt; break-inside: avoid;
+             font-family: "Helvetica Neue", Arial, sans-serif; text-align: left; }
+blockquote p { margin: 0 0 .35em; }
+blockquote p:last-child { margin-bottom: 0; }
+
+/* Rendered mermaid diagrams */
+figure.diagram { margin: 1.2em 0; text-align: center; break-inside: avoid; page-break-inside: avoid; }
+figure.diagram svg { max-width: 100%; height: auto; }
+figure.diagram figcaption { font-size: 8.6pt; color: #5b6770; margin-top: .5em;
+                            font-family: "Helvetica Neue", Arial, sans-serif; }
+
+hr { border: none; border-top: 1px solid #dde2e7; margin: 1.6em 0; }
+ul, ol { margin: 0 0 .8em; padding-left: 1.4em; }
+li { margin-bottom: .22em; }
+.section-break { break-before: page; }
+</style></head><body><h1 id="10-system-architecture">10. System Architecture</h1>
+<h2 id="101-architectural-style">10.1 Architectural Style</h2>
+<p>The application is a three-tier system. A single-page browser client talks over HTTP to a stateless REST service, which in turn owns a relational database and calls a machine learning module. The tiers are deployed as separate containers and composed with Docker Compose.</p>
+<p>Choosing three tiers rather than two was mainly a question of where the model should live. Embedding a model in the browser would have required exporting it to a format JavaScript can execute and would have shipped the model, and therefore its decision boundaries, to every visitor. Keeping it behind the service means the model file never leaves the server, predictions can be logged, and the model can be replaced without a frontend release.</p>
+<h2 id="102-presentation-tier">10.2 Presentation Tier</h2>
+<p>The client is a React application written in TypeScript, bundled by Vite and styled with Tailwind. Recharts draws the radial risk gauge, the SHAP attribution bars and the analytics distributions. Routing is client-side across five views: landing, assessment, results, history and analytics.</p>
+<p>The client holds no business logic. Every number it displays arrives from the service, and its only responsibility beyond rendering is input validation, which it performs with Zod schemas whose enumerated values mirror the backend's. This duplication is deliberate: the frontend check exists to give the user immediate feedback, and the backend check exists because a browser cannot be trusted. The backend schema is authoritative.</p>
+<p>In production the built assets are served by nginx, which also proxies <code>/api/</code> to the service and rewrites unmatched paths to <code>index.html</code> so that client-side routes survive a page reload.</p>
+<h2 id="103-application-tier">10.3 Application Tier</h2>
+<p>The service is built with FastAPI. Its structure follows a conventional layering, and the layers are enforced by convention rather than by tooling:</p>
+<ul>
+<li><strong>Routers</strong> (<code>app/routers/</code>) accept requests and shape responses. They contain no database access and no computation.</li>
+<li><strong>Services</strong> (<code>app/services/</code>) hold the logic. <code>assessment_service</code> owns every database operation; <code>ml_service</code> is a thin singleton wrapping the inference module.</li>
+<li><strong>Schemas</strong> (<code>app/schemas/</code>) define request and response contracts as Pydantic models. All validation lives here.</li>
+<li><strong>Models</strong> (<code>app/models/</code>) declare the SQLAlchemy ORM entities.</li>
+</ul>
+<p>Seven routes are exposed:</p>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Path</th>
+<th>Persists?</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>GET</code></td>
+<td><code>/health</code></td>
+<td>no</td>
+<td>model and database liveness</td>
+</tr>
+<tr>
+<td><code>GET</code></td>
+<td><code>/model/info</code></td>
+<td>no</td>
+<td>training metrics and metadata</td>
+</tr>
+<tr>
+<td><code>POST</code></td>
+<td><code>/predict</code></td>
+<td>no</td>
+<td>prediction without storage</td>
+</tr>
+<tr>
+<td><code>POST</code></td>
+<td><code>/assessment</code></td>
+<td>yes</td>
+<td>prediction and storage</td>
+</tr>
+<tr>
+<td><code>GET</code></td>
+<td><code>/assessment/{id}</code></td>
+<td>no</td>
+<td>retrieve a stored assessment</td>
+</tr>
+<tr>
+<td><code>GET</code></td>
+<td><code>/assessments</code></td>
+<td>no</td>
+<td>paginated list</td>
+</tr>
+<tr>
+<td><code>GET</code></td>
+<td><code>/analytics</code></td>
+<td>no</td>
+<td>aggregate statistics</td>
+</tr>
+</tbody>
+</table>
+<p>Two prediction endpoints exist because the two use cases differ. <code>POST /predict</code> is stateless and suits exploratory use, where a caller wants a figure without leaving a record. <code>POST /assessment</code> performs the same prediction and additionally persists it, returning an identifier the client can later resolve. The assessment form submits to the latter; an earlier build submitted to the former and stored nothing, as Section 19.5 recounts.</p>
+<p>The four assessment and prediction endpoints wrap their payload in an envelope of the form <code>{"success": true, "data": {...}}</code>. The three remaining endpoints — <code>/analytics</code>, <code>/health</code> and <code>/model/info</code> — return their object directly. The inconsistency is unintended and is discussed in Section 18.3; the client compensates by unwrapping in the API layer on a per-endpoint basis, so no page component is aware of the difference.</p>
+<p>A middleware records each request's method, path, status and duration, and attempts to write an audit row. The write is wrapped in a bare exception handler so that a failure to log cannot fail the request.</p>
+<h2 id="104-machine-learning-module">10.4 Machine Learning Module</h2>
+<p>The ML module is not a service. It is a Python package that the application tier imports and calls in-process, which avoids a network hop and a serialisation round-trip on every prediction. The trade-off is that the two tiers must share a Python runtime and cannot be scaled independently. For the request volumes this application is designed for, that trade is comfortably favourable.</p>
+<p>The module resolves its own location from the <code>ML_PATH</code> environment variable, defaulting to <code>/ml</code>, which is where Docker Compose mounts the directory. Model artefacts, encoders and the fitted preprocessing constants are loaded once at process start and held in a module-level cache.</p>
+<h2 id="105-data-tier">10.5 Data Tier</h2>
+<p>PostgreSQL 15 backs the deployed system. SQLite is supported for local development, and the two are reached through the same SQLAlchemy session factory. One query — the daily assessment count in <code>/analytics</code> — cannot be written portably, because SQLite spells date truncation <code>strftime</code> and PostgreSQL spells it <code>to_char</code>. The service inspects the active dialect and selects the appropriate expression rather than assuming one backend.</p>
+<p>Section 17 covers the schema.</p>
+<h2 id="106-request-lifecycle">10.6 Request Lifecycle</h2>
+<p>The description below traces <code>POST /assessment</code>, the path the assessment form submits to and the one that exercises every component. <code>POST /predict</code> follows an identical route up to the point of persistence, then returns without writing.</p>
+<p>A submitted assessment moves through the system as follows. The browser serialises the twenty-six form fields into a JSON body and posts it. FastAPI parses the body against <code>AssessmentInput</code>; a categorical value outside the permitted literals, or a numeric value outside its declared bounds, terminates the request with a 422 and a field-level error. The validated model is converted to a dictionary and passed to <code>ml_service.predict</code>.</p>
+<p>Inside the inference module, the input is clipped to the training IQR bounds, the seven derived features are computed using the persisted normalisation constants, the categoricals are encoded using the persisted maps, and the resulting row is reindexed to the exact column order recorded at training time, with any absent one-hot column filled with zero. The Random Forest produces a probability vector across the three classes; the argmax gives the label and its probability gives the confidence. A <code>TreeExplainer</code> computes SHAP values for the row. Two rule-based functions inspect the raw inputs and the predicted class to produce a list of behavioural biases and a set of written recommendations.</p>
+<p>The service writes an <code>assessments</code> row, a <code>predictions</code> row and three <code>behavioral_scores</code> rows, commits, and returns the assessment identifier with the prediction payload. The middleware appends an audit row. The client stores the payload and navigates to the results view.</p>
+<p>Section 11 gives the diagrams for both the deployment structure and this request sequence.</p>
+<hr />
+<blockquote>
+<p><strong>Figure 10.1</strong> — <em>Request sequence for <code>POST /assessment</code>.</em> Render from the sequence-diagram source in Section 11.2. This is the figure that best demonstrates the system works end to end. Place in Section 10.6.</p>
+<p><strong>Screenshot 10.1</strong> — <em>Swagger UI at <code>http://localhost:8000/docs</code>,</em> with the seven endpoints collapsed so all are visible in one frame. Requires Docker to be running. Place at the end of Section 10.3.</p>
+</blockquote></body></html>

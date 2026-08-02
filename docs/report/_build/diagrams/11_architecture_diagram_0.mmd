@@ -1,0 +1,40 @@
+flowchart TB
+    subgraph client["Presentation Tier — Container: frontend"]
+        UI["React 19 + TypeScript<br/>Vite · Tailwind · Recharts"]
+        NGX["nginx<br/>static assets · SPA fallback · /api proxy"]
+        UI --- NGX
+    end
+
+    subgraph app["Application Tier — Container: backend"]
+        RT["Routers<br/>health · predict · assessment · analytics"]
+        SC["Pydantic Schemas<br/>validation · response envelope"]
+        SV["Services<br/>assessment_service · ml_service"]
+        MW["Logging Middleware<br/>duration · audit write"]
+        RT --> SC --> SV
+        MW -.-> RT
+    end
+
+    subgraph ml["ML Module — mounted at /ml"]
+        INF["inference.predict()"]
+        ART["Artefacts<br/>risk_model.pkl<br/>label encoders<br/>feature_columns.json<br/>preprocessing_params.json"]
+        SHP["SHAP TreeExplainer"]
+        INF --> ART
+        INF --> SHP
+    end
+
+    subgraph data["Data Tier — Container: db"]
+        PG[("PostgreSQL 15<br/>users · assessments · predictions<br/>behavioral_scores · audit_logs")]
+    end
+
+    OFF["Offline pipeline<br/>generate_dataset.py → preprocess.py → train.py"]
+
+    Browser(["User's Browser"]) -->|"HTTPS"| NGX
+    NGX -->|"JSON over HTTP :8000"| RT
+    SV -->|"in-process call"| INF
+    INF -->|"label · probabilities · SHAP"| SV
+    SV -->|"SQLAlchemy ORM"| PG
+    MW -->|"audit row"| PG
+    OFF -.->|"writes artefacts"| ART
+
+    classDef tier fill:#f8f9fa,stroke:#495057,stroke-width:1px
+    class client,app,ml,data tier

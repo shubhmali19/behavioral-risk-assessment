@@ -1,0 +1,38 @@
+sequenceDiagram
+    autonumber
+    actor U as User's Browser
+    participant R as Router<br/>(assessment.py)
+    participant S as assessment_service
+    participant M as ml_service → inference
+    participant D as PostgreSQL
+
+    U->>R: POST /assessment (26 fields, JSON)
+    R->>R: validate against AssessmentInput
+    alt validation fails
+        R-->>U: 422 + offending field
+    else validation passes
+        R->>S: create_assessment(input)
+        S->>D: INSERT assessments (status="pending")
+        D-->>S: assessment_id
+        R->>M: predict(input_dict)
+        M->>M: clip to training IQR bounds
+        M->>M: derive 7 features (persisted constants)
+        M->>M: encode ordinals + one-hot, align 48 cols
+        M->>M: RandomForest.predict_proba
+        M->>M: TreeExplainer → SHAP values
+        M->>M: rule-based biases + recommendations
+        alt prediction raises
+            M-->>R: exception
+            R->>S: mark_assessment_failed()
+            S->>D: UPDATE status="failed"
+            R-->>U: 500
+        else prediction succeeds
+            M-->>R: label, probabilities, SHAP, scores
+            R->>S: save_prediction(assessment_id, result)
+            S->>D: INSERT predictions (1 row)
+            S->>D: INSERT behavioral_scores (3 rows)
+            S->>D: UPDATE status="completed"
+            R-->>U: 200 {success, assessment_id, data}
+        end
+    end
+    Note over R,D: LoggingMiddleware writes an audit_logs row<br/>on every request, including failures

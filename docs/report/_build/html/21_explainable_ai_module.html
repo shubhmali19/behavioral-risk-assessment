@@ -1,0 +1,174 @@
+<!doctype html><html><head><meta charset='utf-8'><title>21_explainable_ai_module</title><style>
+@page { size: A4; margin: 20mm 18mm 20mm 18mm; }
+@page :first { margin-top: 24mm; }
+html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+body {
+  font-family: "Charter", "Georgia", "Times New Roman", serif;
+  font-size: 10.5pt; line-height: 1.52; color: #14171a; margin: 0;
+  hyphens: auto; text-align: justify;
+}
+h1, h2, h3 { font-family: "Helvetica Neue", Arial, sans-serif; color: #0b0d0f; text-align: left; }
+h1 { font-size: 19pt; line-height: 1.2; margin: 0 0 1.1em; padding-bottom: .35em;
+     border-bottom: 2px solid #14171a; break-after: avoid; }
+h2 { font-size: 13pt; margin: 1.7em 0 .55em; break-after: avoid; }
+h3 { font-size: 11pt; margin: 1.3em 0 .45em; break-after: avoid; }
+p { margin: 0 0 .75em; orphans: 3; widows: 3; }
+strong { font-weight: 600; }
+a { color: #14171a; text-decoration: none; }
+
+/* Tables */
+table { border-collapse: collapse; width: 100%; margin: 1em 0 1.2em;
+        font-size: 9.2pt; break-inside: avoid; font-family: "Helvetica Neue", Arial, sans-serif; }
+thead { background: #f2f4f6; }
+th, td { border: 1px solid #ccd2d8; padding: 5px 8px; text-align: left; vertical-align: top; }
+th { font-weight: 600; }
+tbody tr:nth-child(even) { background: #fafbfc; }
+
+/* Code */
+code { font-family: "SF Mono", "Menlo", monospace; font-size: 8.8pt;
+       background: #f4f6f8; padding: 1px 4px; border-radius: 3px; }
+pre { background: #f7f9fa; border: 1px solid #e2e7ec; border-left: 3px solid #8b98a5;
+      padding: 9px 12px; border-radius: 3px; overflow-x: auto; break-inside: avoid;
+      font-size: 8.6pt; line-height: 1.42; text-align: left; }
+pre code { background: none; padding: 0; font-size: inherit; }
+
+/* Figure / screenshot callouts */
+blockquote { margin: .9em 0; padding: .6em .9em; background: #fffdf3;
+             border-left: 3px solid #d9b23a; font-size: 9.4pt; break-inside: avoid;
+             font-family: "Helvetica Neue", Arial, sans-serif; text-align: left; }
+blockquote p { margin: 0 0 .35em; }
+blockquote p:last-child { margin-bottom: 0; }
+
+/* Rendered mermaid diagrams */
+figure.diagram { margin: 1.2em 0; text-align: center; break-inside: avoid; page-break-inside: avoid; }
+figure.diagram svg { max-width: 100%; height: auto; }
+figure.diagram figcaption { font-size: 8.6pt; color: #5b6770; margin-top: .5em;
+                            font-family: "Helvetica Neue", Arial, sans-serif; }
+
+hr { border: none; border-top: 1px solid #dde2e7; margin: 1.6em 0; }
+ul, ol { margin: 0 0 .8em; padding-left: 1.4em; }
+li { margin-bottom: .22em; }
+.section-break { break-before: page; }
+</style></head><body><h1 id="21-explainable-ai-module">21. Explainable AI Module</h1>
+<h2 id="211-why-explanation-is-required-here">21.1 Why Explanation Is Required Here</h2>
+<p>A risk band on its own is not actionable. Told that they are <em>High</em> risk, a user learns nothing they can act upon; told that the assessment rests chiefly on a savings rate of 4% and an emergency fund covering under three months, they learn what to change.</p>
+<p>There is a second reason, particular to the domain. The rule-based rubrics that this system replaces, described in Section 8.5, are transparent by construction: an analyst can read the weight attached to each answer. Substituting a learned function forfeits that transparency unless something restores it. The explainability module exists to pay that debt, not to decorate the output.</p>
+<h2 id="212-method">21.2 Method</h2>
+<p>Attributions are computed with SHAP (SHapley Additive exPlanations), which assigns each feature the average marginal contribution it makes to the prediction across all orderings in which features could be introduced. The construction is the Shapley value from cooperative game theory, and it is the unique attribution satisfying local accuracy, missingness and consistency.</p>
+<p>Computing it exactly is exponential in the number of features in general. For tree ensembles it is not: <code>TreeExplainer</code> exploits the tree structure to compute exact Shapley values in time polynomial in the depth and number of trees. Since the deployed model is a 200-tree Random Forest of depth 10 over 48 features, exact attribution is tractable per request, and no sampling approximation is needed.</p>
+<p><code>KernelExplainer</code> is retained in the code for the neural network, which is not deployed.</p>
+<h2 id="213-global-and-local-explanation">21.3 Global and Local Explanation</h2>
+<p>Two distinct artefacts are produced, and conflating them is a common error.</p>
+<p><strong>Global importance</strong> is computed once, during training, by averaging the absolute SHAP value of each feature across the test partition. It answers: on which features does this model rely, in aggregate? The result is stored in <code>model_metadata.json</code> and rendered as the beeswarm plot at <code>ml/plots/shap_summary.png</code>.</p>
+<p><strong>Local attribution</strong> is computed per request, for the single submitted row. It answers: for <em>this</em> person, which of their inputs drove <em>their</em> assessment? This is what the results page displays, and it is the reason SHAP is invoked at prediction time rather than merely at training time.</p>
+<p>A user with an unusual profile can receive a local explanation that departs sharply from the global ranking, and that is the point.</p>
+<h2 id="214-the-serving-path-discards-direction">21.4 The Serving Path Discards Direction</h2>
+<p>The implementation does not deliver the local explanation it promises.</p>
+<p><code>TreeExplainer.shap_values</code> on a multiclass model returns an array of shape <code>(n_samples, n_features, n_classes)</code>: a signed contribution from every feature toward every class. The serving code reduces it as follows:</p>
+<pre><code class="language-python">sv_row = np.abs(sv[0]).mean(axis=1)   # (n_features,)
+</code></pre>
+<p>Two operations occur here, and each destroys information.</p>
+<p>The absolute value is taken, so a feature that pushed the prediction <em>away</em> from the assigned class becomes indistinguishable from one that pushed it <em>toward</em> that class. The mean is then taken across the three classes, so an attribution that was specific to <em>High</em> is averaged with those for <em>Low</em> and <em>Medium</em>, yielding a class-agnostic magnitude.</p>
+<p>What the API returns is therefore not "how did this feature affect my risk assessment" but "how much did this feature matter to the model at this point, in any direction, for any class". Empirically, across 120 attributions drawn from twelve varied inputs, <strong>not one is negative</strong>.</p>
+<p>The consequence propagates to the interface. <code>Results.tsx</code> colours each bar blue for a positive attribution and red for a negative one, and captions the chart <em>"Blue = increases risk score, Red = decreases risk score."</em> No bar can ever be red. The legend describes a distinction that the data it renders does not carry, and a user reading it would reasonably conclude that every one of their top ten features increased their risk — including, in the sample below, a high credit score.</p>
+<pre><code>financial_discipline_score   +0.0455
+savings_rate                 +0.0162
+credit_score                 +0.0159
+emergency_fund_months        +0.0119
+savings_ratio                +0.0108
+</code></pre>
+<p>For this record — savings rate 30%, credit score 720, three months of emergency fund — the model predicted <em>Medium</em>. A signed, class-specific attribution would show <code>credit_score</code> and <code>savings_rate</code> pulling <em>away</em> from <em>High</em>. The magnitude presentation cannot express that, and the colour legend actively misleads.</p>
+<p>The repair is small. Selecting the column corresponding to the predicted class and preserving its sign, rather than averaging absolute values across classes, yields the attribution the interface is already written to display:</p>
+<pre><code class="language-python">k = int(model.predict(X_df)[0])       # index of predicted class
+sv_row = sv[0][:, k]                  # signed, class-specific
+</code></pre>
+<p>This was identified while writing this chapter and is not applied, because doing so would change every SHAP figure reported in Sections 14 and 22 and require regenerating them. It is recorded as a defect in Section 26, and it is the first thing that should be fixed in any continuation of this work.</p>
+<p>The global ranking in <code>shap_summary.png</code>, computed by <code>train.py</code> over the test partition, is unaffected: averaging absolute values across a population is the correct way to summarise global importance, and that is what a beeswarm plot displays.</p>
+<h2 id="215-what-the-explanations-show">21.5 What the Explanations Show</h2>
+<p>Subject to Section 22.5 — that three of the top five features encode a single underlying quantity — the ranking is consistent with the generating function.</p>
+<table>
+<thead>
+<tr>
+<th>Rank</th>
+<th>Feature</th>
+<th>Mean abs. SHAP</th>
+<th>Appears in <code>risk_score</code>?</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>savings_rate</td>
+<td>0.0462</td>
+<td>yes, weight −30</td>
+</tr>
+<tr>
+<td>2</td>
+<td>financial_discipline_score</td>
+<td>0.0407</td>
+<td>derived from three of the five</td>
+</tr>
+<tr>
+<td>3</td>
+<td>emergency_fund_months</td>
+<td>0.0280</td>
+<td>yes, weight +10 (as an indicator)</td>
+</tr>
+<tr>
+<td>4</td>
+<td>savings_ratio</td>
+<td>0.0217</td>
+<td>proxy for savings_rate</td>
+</tr>
+<tr>
+<td>5</td>
+<td>expense_ratio</td>
+<td>0.0217</td>
+<td>complement of savings_ratio</td>
+</tr>
+<tr>
+<td>6</td>
+<td>investment_experience_years</td>
+<td>0.0147</td>
+<td>yes, weight −15</td>
+</tr>
+<tr>
+<td>7</td>
+<td>behavioral_composite_score</td>
+<td>0.0134</td>
+<td>partly</td>
+</tr>
+<tr>
+<td>8</td>
+<td>credit_score</td>
+<td>0.0130</td>
+<td>yes, weight +25</td>
+</tr>
+<tr>
+<td>9</td>
+<td>years_of_experience</td>
+<td>0.0039</td>
+<td>no</td>
+</tr>
+<tr>
+<td>10</td>
+<td>age</td>
+<td>0.0033</td>
+<td>no</td>
+</tr>
+</tbody>
+</table>
+<p>Every feature that enters <code>risk_score</code> appears in the top eight, and the two that do not — <code>years_of_experience</code> and <code>age</code> — carry an order of magnitude less attribution. The model has recovered the structure it was given.</p>
+<p><code>credit_score</code> at rank eight is lower than its weight of +25 would suggest. The explanation lies in preprocessing: the IQR clip described in Section 9.3 truncates <code>credit_score</code> at a lower bound of 660.5, discarding the variation among poor-credit individuals precisely where that feature is most discriminative. The model cannot use information that was removed before it saw the column.</p>
+<p>No lifestyle feature reaches the top ten. This is not a finding about human behaviour. <code>risk_score</code> is a function of five financial quantities only, so the lifestyle attributes have nothing to contribute, and Section 13.6 anticipates this. A real dataset might behave very differently, and nothing here licenses a claim either way.</p>
+<h2 id="216-behavioural-biases-and-recommendations">21.6 Behavioural Biases and Recommendations</h2>
+<p>The interface also presents a list of detected behavioural biases and a set of written recommendations. Neither is produced by the model.</p>
+<p>Both are generated by fixed rules over the raw inputs and the predicted class — for instance, flagging <em>present bias</em> when the savings rate falls below 10% while the subscription count exceeds five, or <em>loss aversion</em> when a Low-risk assessment coincides with substantial investment experience. Nine bias rules and eleven recommendation branches are implemented, of which three to five typically fire for a given record.</p>
+<p>These are heuristics drawn from the behavioural-finance vocabulary of Section 3, not inferences. They are deterministic given the input, they were not validated against any labelled data, and no claim is made that a user so flagged exhibits the bias named. They are presented in the report as an illustrative layer, and they are the component of this system with the weakest evidentiary basis.</p>
+<hr />
+<blockquote>
+<p><strong>Figure 21.1</strong> — <em>Global SHAP beeswarm.</em> Already generated at <code>ml/plots/shap_summary.png</code>. Place in Section 21.5.</p>
+<p><strong>Figure 21.2</strong> — <em>Top-20 features by mean absolute SHAP.</em> Already generated at <code>ml/plots/feature_importance.png</code>. Place alongside Figure 21.1.</p>
+<p><strong>Screenshot 21.1</strong> — <em>Local SHAP bar chart on the results page,</em> with the "Blue = increases risk" legend visible. Caption it to state that no bar is red, and cross-reference Section 21.4. Used honestly, this screenshot documents the defect rather than the feature.</p>
+<p><strong>Figure 21.3</strong> — <em>Intended versus actual attribution for one record.</em> Two side-by-side bar charts: the signed, class-specific SHAP values that <code>TreeExplainer</code> produces, and the absolute cross-class means that the API returns. Generate by calling <code>TreeExplainer</code> directly on the sample in Section 21.4. This figure makes the defect legible in one glance. Place in Section 21.4.</p>
+</blockquote></body></html>

@@ -1,0 +1,222 @@
+<!doctype html><html><head><meta charset='utf-8'><title>13_questionnaire_and_parameters</title><style>
+@page { size: A4; margin: 20mm 18mm 20mm 18mm; }
+@page :first { margin-top: 24mm; }
+html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+body {
+  font-family: "Charter", "Georgia", "Times New Roman", serif;
+  font-size: 10.5pt; line-height: 1.52; color: #14171a; margin: 0;
+  hyphens: auto; text-align: justify;
+}
+h1, h2, h3 { font-family: "Helvetica Neue", Arial, sans-serif; color: #0b0d0f; text-align: left; }
+h1 { font-size: 19pt; line-height: 1.2; margin: 0 0 1.1em; padding-bottom: .35em;
+     border-bottom: 2px solid #14171a; break-after: avoid; }
+h2 { font-size: 13pt; margin: 1.7em 0 .55em; break-after: avoid; }
+h3 { font-size: 11pt; margin: 1.3em 0 .45em; break-after: avoid; }
+p { margin: 0 0 .75em; orphans: 3; widows: 3; }
+strong { font-weight: 600; }
+a { color: #14171a; text-decoration: none; }
+
+/* Tables */
+table { border-collapse: collapse; width: 100%; margin: 1em 0 1.2em;
+        font-size: 9.2pt; break-inside: avoid; font-family: "Helvetica Neue", Arial, sans-serif; }
+thead { background: #f2f4f6; }
+th, td { border: 1px solid #ccd2d8; padding: 5px 8px; text-align: left; vertical-align: top; }
+th { font-weight: 600; }
+tbody tr:nth-child(even) { background: #fafbfc; }
+
+/* Code */
+code { font-family: "SF Mono", "Menlo", monospace; font-size: 8.8pt;
+       background: #f4f6f8; padding: 1px 4px; border-radius: 3px; }
+pre { background: #f7f9fa; border: 1px solid #e2e7ec; border-left: 3px solid #8b98a5;
+      padding: 9px 12px; border-radius: 3px; overflow-x: auto; break-inside: avoid;
+      font-size: 8.6pt; line-height: 1.42; text-align: left; }
+pre code { background: none; padding: 0; font-size: inherit; }
+
+/* Figure / screenshot callouts */
+blockquote { margin: .9em 0; padding: .6em .9em; background: #fffdf3;
+             border-left: 3px solid #d9b23a; font-size: 9.4pt; break-inside: avoid;
+             font-family: "Helvetica Neue", Arial, sans-serif; text-align: left; }
+blockquote p { margin: 0 0 .35em; }
+blockquote p:last-child { margin-bottom: 0; }
+
+/* Rendered mermaid diagrams */
+figure.diagram { margin: 1.2em 0; text-align: center; break-inside: avoid; page-break-inside: avoid; }
+figure.diagram svg { max-width: 100%; height: auto; }
+figure.diagram figcaption { font-size: 8.6pt; color: #5b6770; margin-top: .5em;
+                            font-family: "Helvetica Neue", Arial, sans-serif; }
+
+hr { border: none; border-top: 1px solid #dde2e7; margin: 1.6em 0; }
+ul, ol { margin: 0 0 .8em; padding-left: 1.4em; }
+li { margin-bottom: .22em; }
+.section-break { break-before: page; }
+</style></head><body><h1 id="13-questionnaire-design-and-user-parameters">13. Questionnaire Design and User Parameters</h1>
+<h2 id="131-what-this-section-describes-and-what-it-does-not">13.1 What This Section Describes, and What It Does Not</h2>
+<p>The system presents a twenty-six field web form. It is not a survey instrument, and it was not administered to respondents. No questionnaire was piloted, no responses were collected, and no ethics approval was sought, because at no point did the project involve human participants. The training data was generated programmatically, as Section 12 sets out.</p>
+<p>What follows therefore describes the <em>input interface</em> through which a live user supplies values at prediction time. Calling it a questionnaire would overstate what was built. It is the elicitation surface for the twenty-six model features, and its design problem was consequently narrow: obtain each feature from a user who is not a financial analyst, in a form the model can consume, without permitting values the model cannot represent.</p>
+<h2 id="132-structure">13.2 Structure</h2>
+<p>The form is divided across four steps. The division mirrors the grouping of the underlying columns and exists to reduce the number of fields visible at once; twenty-six inputs on a single page would make a long and discouraging page. No usability study was conducted to verify this, and the claim is offered as a design rationale rather than an empirical finding.</p>
+<table>
+<thead>
+<tr>
+<th>Step</th>
+<th>Group</th>
+<th>Fields</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>Demographics</td>
+<td>10</td>
+</tr>
+<tr>
+<td>2</td>
+<td>Financial profile</td>
+<td>10</td>
+</tr>
+<tr>
+<td>3</td>
+<td>Lifestyle</td>
+<td>6</td>
+</tr>
+<tr>
+<td>4</td>
+<td>Review and submit</td>
+<td>—</td>
+</tr>
+</tbody>
+</table>
+<p>Each step validates before the user may advance. A progress indicator across the top shows position within the sequence. The fourth step renders every entered value back for confirmation and performs no collection of its own.</p>
+<h2 id="133-parameter-specification">13.3 Parameter Specification</h2>
+<p>Every field is constrained twice: once in the browser by a Zod schema, and once in the service by a Pydantic model. The browser check exists to give immediate feedback; the service check exists because a browser cannot be trusted. Where the two disagree, the service is authoritative, and a value that passes the browser but fails the service returns HTTP 422 with a field-level error rather than reaching the model.</p>
+<p>Categorical fields are constrained to exact string literals. These are not free text, and this is not a cosmetic decision. The model's ordinal maps and one-hot columns were fitted on the exact spellings present in the training data, so a value of <code>Full-time</code> where the model expects <code>Full-Time</code> produces a silently different encoding. An earlier build of the frontend accepted occupation and location as free-text inputs and offered dropdown values such as <code>Bachelor's</code> and <code>Upper-Middle</code> that appear nowhere in the training vocabulary; every such submission was rejected by validation. The current form offers only the ten permitted literal sets:</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Permitted values</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>gender</td>
+<td>Male, Female, Other</td>
+</tr>
+<tr>
+<td>education</td>
+<td>High School, Graduate, Post Graduate, PhD</td>
+</tr>
+<tr>
+<td>occupation</td>
+<td>Salaried, Self-Employed, Business, Freelancer, Student, Retired</td>
+</tr>
+<tr>
+<td>income_level</td>
+<td>Low, Middle, High</td>
+</tr>
+<tr>
+<td>marital_status</td>
+<td>Single, Married, Divorced, Widowed</td>
+</tr>
+<tr>
+<td>location</td>
+<td>Urban, Semi-Urban, Rural</td>
+</tr>
+<tr>
+<td>employment_type</td>
+<td>Full-Time, Part-Time, Contract, Unemployed</td>
+</tr>
+<tr>
+<td>investment_frequency</td>
+<td>Never, Rarely, Monthly, Weekly</td>
+</tr>
+<tr>
+<td>insurance_coverage</td>
+<td>None, Basic, Comprehensive</td>
+</tr>
+<tr>
+<td>shopping_frequency</td>
+<td>Rarely, Monthly, Weekly, Daily</td>
+</tr>
+</tbody>
+</table>
+<h2 id="134-numeric-bounds-and-the-support-of-the-training-data">13.4 Numeric Bounds and the Support of the Training Data</h2>
+<p>The numeric fields carry declared bounds. Those bounds were chosen to be <em>permissive</em> — to accept any value a plausible user might report — rather than to mirror the range the model was trained on. The two differ, and the divergence is worth tabulating explicitly because it determines how the system behaves at its edges.</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>API accepts</th>
+<th>Training support</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>age</td>
+<td>18 – 100</td>
+<td>18 – 75</td>
+</tr>
+<tr>
+<td>dependents</td>
+<td>0 – 10</td>
+<td>0 – 5</td>
+</tr>
+<tr>
+<td>years_of_experience</td>
+<td>0 – 50</td>
+<td>0 – 40</td>
+</tr>
+<tr>
+<td>savings_rate</td>
+<td>0 – 100 %</td>
+<td>−10 % – 60 %</td>
+</tr>
+<tr>
+<td>emergency_fund_months</td>
+<td>0 – 36</td>
+<td>0 – 21</td>
+</tr>
+<tr>
+<td>credit_score</td>
+<td>300 – 900</td>
+<td>300 – 900</td>
+</tr>
+<tr>
+<td>investment_experience_years</td>
+<td>0 – 50</td>
+<td>0 – 15</td>
+</tr>
+<tr>
+<td>subscription_count</td>
+<td>0 – 30</td>
+<td>0 – 15</td>
+</tr>
+<tr>
+<td>online_spending_pct</td>
+<td>0 – 100</td>
+<td>0 – 80</td>
+</tr>
+<tr>
+<td>luxury_spending_pct</td>
+<td>0 – 100</td>
+<td>0 – 50</td>
+</tr>
+</tbody>
+</table>
+<p>Only <code>credit_score</code> aligns. For every other field the interface admits values the model never observed. A user aged 82, or reporting twenty-five years of investment experience, supplies a point outside the region where the training distribution has any mass, and a decision-tree ensemble asked to extrapolate beyond its training range does not extrapolate at all — it returns the value of the terminal leaf reached by the last split it can apply, which is the prediction it would have made at the boundary.</p>
+<p>Two mitigations are in place. Values are clipped to the interquartile bounds fitted during preprocessing before any derived feature is computed, so an extreme input produces the same feature vector as a boundary input rather than an unseen one. And the model returns a probability distribution rather than a bare label, so a prediction made near the edge of the training support is at least accompanied by the confidence that reflects it. Neither mitigation makes the prediction <em>valid</em> for such a user; they only ensure it is well-defined. Section 26 records this as a limitation.</p>
+<p>One asymmetry runs the other way. <code>savings_rate</code> is declared non-negative in the API, yet the training data contains values down to −10 %, representing individuals whose expenses exceed their income. A user who is currently dis-saving cannot express that state through the form. They must enter zero, and the model will assess them as though they were breaking even.</p>
+<h2 id="135-two-fields-the-interface-handles-poorly">13.5 Two Fields the Interface Handles Poorly</h2>
+<p><strong><code>insurance_coverage = "None"</code>.</strong> The form offers three options and validation accepts all three. The model, however, was trained on a two-level encoding, because the <code>None</code> category was destroyed when the training CSV was read, as Section 12.5 describes. A user selecting "no insurance" is therefore encoded as the training median — which corresponds to <code>Basic</code>. The system accepts the input, records it faithfully in the database, and then quietly assesses the user as though they held basic cover. This is a genuine defect, and it is a defect of the data pipeline rather than of the form.</p>
+<p><strong><code>savings_rate</code> units.</strong> The field is labelled as a percentage and the API contract declares it as one, in the range 0–100. The underlying dataset column is a fraction. The conversion happens inside the inference module and is unconditional; an earlier implementation applied it only when the magnitude exceeded one, which misread a genuine entry of <code>0.5</code> — meaning half a percent — as fifty percent. The current behaviour is documented in <code>docs/api-contract.json</code>, which is the single source of truth both the frontend types and the backend schema are checked against.</p>
+<h2 id="136-why-these-twenty-six-parameters">13.6 Why These Twenty-Six Parameters</h2>
+<p>The parameter set was not derived from a validated psychometric instrument, and it is not claimed to be one. It reflects three groups of quantities that behavioural finance associates with risk-taking, chosen because they are things a person can plausibly report about themselves.</p>
+<p>Demographic attributes stand in for life-stage constraints: a person with dependants carries obligations that alter their capacity to absorb loss, independent of their attitude toward it. Financial attributes capture objective position — surplus, buffer, leverage, creditworthiness. Lifestyle attributes are the least conventional inclusion and serve as observable proxies for consumption discipline, on the reasoning that discretionary spending patterns reveal preferences that a direct question about risk tolerance would not, since people are known to misreport the latter.</p>
+<p>The distinction between <em>capacity</em> to bear risk and <em>tolerance</em> for it is the organising idea, and the parameter set deliberately weights the former. Section 3 situates this against the literature. It should be noted that the risk label in the training data is itself a function of five capacity-side variables only, so the lifestyle attributes contribute little to the model's decisions — a point the SHAP rankings in Section 21 make plain, and which is a property of the generator rather than a finding about human behaviour.</p>
+<hr />
+<blockquote>
+<p><strong>Screenshot 13.1</strong> — <em>Step 1 of the assessment form (Demographics),</em> showing the progress indicator and one dropdown expanded to display its permitted literal values. Place in Section 13.2.</p>
+<p><strong>Screenshot 13.2</strong> — <em>Step 2 (Financial profile)</em> with a validation error triggered, for instance <code>credit_score</code> set to 250. This demonstrates the client-side bound in Section 13.3 without needing to describe it. Place there.</p>
+<p><strong>Screenshot 13.3</strong> — <em>Step 4 (Review and submit),</em> showing the full set of entered values before submission. Place at the end of Section 13.2.</p>
+<p><strong>Table 13.1</strong> — <em>Complete parameter dictionary.</em> Twenty-six rows: field, group, type, UI control, permitted values or bounds, training support. Merge the two tables in Sections 13.3 and 13.4 and add the six lifestyle fields omitted there for brevity. Source the bounds from <code>backend/app/schemas/assessment.py</code>, which is authoritative. Place as an appendix.</p>
+</blockquote></body></html>

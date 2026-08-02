@@ -1,0 +1,231 @@
+<!doctype html><html><head><meta charset='utf-8'><title>12_dataset_description</title><style>
+@page { size: A4; margin: 20mm 18mm 20mm 18mm; }
+@page :first { margin-top: 24mm; }
+html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+body {
+  font-family: "Charter", "Georgia", "Times New Roman", serif;
+  font-size: 10.5pt; line-height: 1.52; color: #14171a; margin: 0;
+  hyphens: auto; text-align: justify;
+}
+h1, h2, h3 { font-family: "Helvetica Neue", Arial, sans-serif; color: #0b0d0f; text-align: left; }
+h1 { font-size: 19pt; line-height: 1.2; margin: 0 0 1.1em; padding-bottom: .35em;
+     border-bottom: 2px solid #14171a; break-after: avoid; }
+h2 { font-size: 13pt; margin: 1.7em 0 .55em; break-after: avoid; }
+h3 { font-size: 11pt; margin: 1.3em 0 .45em; break-after: avoid; }
+p { margin: 0 0 .75em; orphans: 3; widows: 3; }
+strong { font-weight: 600; }
+a { color: #14171a; text-decoration: none; }
+
+/* Tables */
+table { border-collapse: collapse; width: 100%; margin: 1em 0 1.2em;
+        font-size: 9.2pt; break-inside: avoid; font-family: "Helvetica Neue", Arial, sans-serif; }
+thead { background: #f2f4f6; }
+th, td { border: 1px solid #ccd2d8; padding: 5px 8px; text-align: left; vertical-align: top; }
+th { font-weight: 600; }
+tbody tr:nth-child(even) { background: #fafbfc; }
+
+/* Code */
+code { font-family: "SF Mono", "Menlo", monospace; font-size: 8.8pt;
+       background: #f4f6f8; padding: 1px 4px; border-radius: 3px; }
+pre { background: #f7f9fa; border: 1px solid #e2e7ec; border-left: 3px solid #8b98a5;
+      padding: 9px 12px; border-radius: 3px; overflow-x: auto; break-inside: avoid;
+      font-size: 8.6pt; line-height: 1.42; text-align: left; }
+pre code { background: none; padding: 0; font-size: inherit; }
+
+/* Figure / screenshot callouts */
+blockquote { margin: .9em 0; padding: .6em .9em; background: #fffdf3;
+             border-left: 3px solid #d9b23a; font-size: 9.4pt; break-inside: avoid;
+             font-family: "Helvetica Neue", Arial, sans-serif; text-align: left; }
+blockquote p { margin: 0 0 .35em; }
+blockquote p:last-child { margin-bottom: 0; }
+
+/* Rendered mermaid diagrams */
+figure.diagram { margin: 1.2em 0; text-align: center; break-inside: avoid; page-break-inside: avoid; }
+figure.diagram svg { max-width: 100%; height: auto; }
+figure.diagram figcaption { font-size: 8.6pt; color: #5b6770; margin-top: .5em;
+                            font-family: "Helvetica Neue", Arial, sans-serif; }
+
+hr { border: none; border-top: 1px solid #dde2e7; margin: 1.6em 0; }
+ul, ol { margin: 0 0 .8em; padding-left: 1.4em; }
+li { margin-bottom: .22em; }
+.section-break { break-before: page; }
+</style></head><body><h1 id="12-dataset-description">12. Dataset Description</h1>
+<h2 id="121-provenance">12.1 Provenance</h2>
+<p>The dataset used to train and evaluate this system is synthetic. It contains 22,000 records across 30 columns and was produced by <code>data/raw/generate_dataset.py</code> under a fixed random seed of 42. No survey was administered, and no row corresponds to a real person.</p>
+<p>This should be stated at the outset because it constrains how every result in Section 23 must be read. The model's reported accuracy measures how well a learning algorithm recovers a generating process that is known in advance. It does not measure how well the system would classify the risk profile of an actual individual, and no claim to that effect is made anywhere in this report.</p>
+<p>Synthetic generation was chosen for a practical reason rather than a methodological preference. The system requires a single table combining demographic attributes, self-reported financial position, lifestyle spending and a behavioural risk label. No public dataset carries all four. Financial datasets such as credit-default records lack lifestyle and behavioural variables; behavioural finance studies typically report aggregate findings rather than record-level data; and datasets that combine both are proprietary. Constructing a generator with explicitly documented dependencies at least makes the assumptions inspectable, which a poorly documented real dataset would not.</p>
+<h2 id="122-schema">12.2 Schema</h2>
+<p>The thirty columns divide into four groups.</p>
+<table>
+<thead>
+<tr>
+<th>Group</th>
+<th>Count</th>
+<th>Columns</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Demographic</td>
+<td>10</td>
+<td>age, gender, education, occupation, income_level, marital_status, dependents, location, employment_type, years_of_experience</td>
+</tr>
+<tr>
+<td>Financial</td>
+<td>10</td>
+<td>monthly_income, monthly_expenses, savings_rate, emergency_fund_months, total_debt, loan_amount, credit_score, investment_experience_years, investment_frequency, insurance_coverage</td>
+</tr>
+<tr>
+<td>Lifestyle</td>
+<td>6</td>
+<td>shopping_frequency, online_spending_pct, luxury_spending_pct, subscription_count, gaming_expenses_monthly, travel_expenses_annual</td>
+</tr>
+<tr>
+<td>Target</td>
+<td>4</td>
+<td>risk_category, investment_preference, expected_savings_increase, financial_decision_score</td>
+</tr>
+</tbody>
+</table>
+<p>Only <code>risk_category</code> is used as the classification target in the deployed model. <code>investment_preference</code> supports a secondary model discussed in Section 22. <code>financial_decision_score</code> and <code>expected_savings_increase</code> are excluded from the feature set entirely, since both are derived from the same quantities that determine the risk label and their inclusion would constitute leakage.</p>
+<h2 id="123-dependency-structure">12.3 Dependency Structure</h2>
+<p>Attributes are not drawn independently. The generator imposes a chain of conditional dependencies intended to produce plausible joint behaviour rather than a table of uncorrelated noise.</p>
+<p>Age is sampled from a normal distribution centred at 35 and clipped to 18–75. Occupation is drawn from a base distribution, then overridden for respondents under 24 so that students dominate that band. Income level is conditioned on occupation; a business owner draws <code>High</code> with probability 0.65, a student draws <code>Low</code> with probability 0.80. Location is conditioned on income level, so that high earners concentrate in urban areas. Monthly income is a product of an occupation base rate, an education multiplier ranging from 0.8 for high school to 1.6 for a doctorate, and a lognormal dispersion term.</p>
+<p>Expenses follow income through a ratio drawn uniformly between 0.40 and 0.90 and inflated by 0.04 per dependant. Savings rate is then the implied surplus with Gaussian noise added, which is why the column occasionally goes negative. Credit score is constructed as a linear function of debt-to-income, savings rate and years of experience, with noise of standard deviation 40. Investment experience scales with tenure and an internal discipline variable. Investment frequency and insurance coverage are both sampled from probability vectors that depend on that same discipline variable.</p>
+<p>A consequence of this design is that many features are strongly correlated with the targets by construction. Measured against <code>financial_decision_score</code>:</p>
+<table>
+<thead>
+<tr>
+<th>Feature</th>
+<th>Pearson <em>r</em></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>savings_rate</td>
+<td>+0.711</td>
+</tr>
+<tr>
+<td>credit_score</td>
+<td>+0.499</td>
+</tr>
+<tr>
+<td>emergency_fund_months</td>
+<td>+0.482</td>
+</tr>
+<tr>
+<td>investment_experience_years</td>
+<td>+0.346</td>
+</tr>
+<tr>
+<td>debt_to_income ratio</td>
+<td>−0.223</td>
+</tr>
+</tbody>
+</table>
+<p>These are not discovered relationships. They are the relationships the generator was written to produce, recovered by measurement.</p>
+<h2 id="124-construction-of-the-target-labels">12.4 Construction of the Target Labels</h2>
+<p><code>risk_category</code> derives from a continuous score:</p>
+<pre><code>risk_score = −30·savings_rate
+             + 25·(1 − credit_score/900)
+             + 20·(min(debt_to_income, 5)/5)
+             − 15·(investment_experience_years/20)
+             + 10·[emergency_fund_months &lt; 3]
+             + ε,      ε ~ N(0, 8)
+</code></pre>
+<p>The score is cut at its 35th and 80th percentiles to yield Low, Medium and High in proportions 35 / 45 / 20.</p>
+<p>The noise term deserves attention. The deterministic component of <code>risk_score</code> has a standard deviation of 7.64 across the dataset; the injected noise has a standard deviation of 8.00. The noise is therefore slightly larger than the signal. Roughly half the variance in the continuous score — and hence a substantial share of the class assignment near the two thresholds — is irreducible. Section 22.2 derives the resulting Bayes-optimal accuracy of 0.6104 and shows that the trained model reaches 98.9% of it.</p>
+<p><code>investment_preference</code> is generated differently, and the difference is consequential. Each record's preference is sampled from one of three fixed probability vectors selected solely by that record's <code>risk_category</code>. A Low-risk record draws Fixed Deposit with probability 0.40, Crypto with probability 0.05, and so on. <strong>No other attribute influences the draw.</strong> The label consequently carries no information about the twenty-six input features beyond what <code>risk_category</code> already encodes, which is why the secondary model fails. Section 22 develops this.</p>
+<p><code>financial_decision_score</code> is a weighted sum of savings rate, normalised credit score, inverted debt burden, investment experience and emergency-fund coverage, plus noise. <code>expected_savings_increase</code> scales the internal discipline variable.</p>
+<h2 id="125-a-defect-in-the-data-loading-path">12.5 A Defect in the Data Loading Path</h2>
+<p>One column does not contain what the generator intended, and the discrepancy survived into the trained model.</p>
+<p>The generator emits <code>insurance_coverage</code> as a three-level attribute. Reading the CSV file as raw text confirms the intended distribution:</p>
+<table>
+<thead>
+<tr>
+<th>Value on disk</th>
+<th>Count</th>
+<th>Share</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Basic</td>
+<td>9,727</td>
+<td>44.2%</td>
+</tr>
+<tr>
+<td><strong>None</strong></td>
+<td><strong>7,264</strong></td>
+<td><strong>33.0%</strong></td>
+</tr>
+<tr>
+<td>Comprehensive</td>
+<td>5,009</td>
+<td>22.8%</td>
+</tr>
+</tbody>
+</table>
+<p><code>pandas.read_csv</code> includes the bare string <code>None</code> in its default set of null indicators. When <code>preprocess.py</code> loads the file, those 7,264 entries arrive as <code>NaN</code>. The script identifies them as missing values, reports them as such, and imputes them with the column mode — which is <code>Basic</code>.</p>
+<p>The effect is that a third of the dataset had a genuine, meaningful category replaced by a different category. The fitted ordinal map contains two levels rather than three, and no record in the training set carries the information that its subject held no insurance at all.</p>
+<p>The consequences are uneven, and it is worth separating them.</p>
+<p><strong>On predictive accuracy the effect is negligible.</strong> Retraining with the category preserved gives a weighted F1 of 0.5915 against 0.5955 for the pipeline as shipped, a difference smaller than the ±0.0032 cross-validation spread reported in Section 23. The reason is structural: <code>insurance_coverage</code> does not appear anywhere in the <code>risk_score</code> expression above. It influences the label only indirectly, through the internal discipline variable, and that pathway is already carried by <code>savings_rate</code> and <code>emergency_fund_months</code>, both of which the model observes directly. The classifier loses nothing it was using.</p>
+<p><strong>On the derived scores and on serving, the effect is real.</strong> <code>behavioral_composite_score</code> assigns insurance coverage a weight of 0.20, so that score is systematically overstated for the third of records whose coverage was upgraded from none to basic. And because the ordinal map never learned a <code>None</code> level, a live user who selects "no insurance" in the questionnaire is silently encoded as the training median. The system accepts an input it cannot represent.</p>
+<p>The defect is documented rather than repaired. Repairing it would shift every metric in this report by less than half a percentage point while invalidating the figures already generated, and the finding is more instructive left in place: it illustrates that a data-quality fault can pass through cleaning, encoding, training and evaluation without ever registering as an error, because the offline test set is corrupted in precisely the same way as the training set. Section 26 records the limitation.</p>
+<h2 id="126-summary-statistics">12.6 Summary Statistics</h2>
+<table>
+<thead>
+<tr>
+<th>Column</th>
+<th>Min</th>
+<th>Median</th>
+<th>Max</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>monthly_income (₹)</td>
+<td>5,000</td>
+<td>45,802</td>
+<td>200,000</td>
+</tr>
+<tr>
+<td>monthly_expenses (₹)</td>
+<td>3,000</td>
+<td>30,212</td>
+<td>180,000</td>
+</tr>
+<tr>
+<td>savings_rate (fraction)</td>
+<td>−0.100</td>
+<td>0.319</td>
+<td>0.600</td>
+</tr>
+<tr>
+<td>credit_score</td>
+<td>300</td>
+<td>791</td>
+<td>900</td>
+</tr>
+<tr>
+<td>total_debt (₹)</td>
+<td>13</td>
+<td>10,717</td>
+<td>4,166,885</td>
+</tr>
+<tr>
+<td>financial_decision_score</td>
+<td>0.00</td>
+<td>54.20</td>
+<td>85.34</td>
+</tr>
+</tbody>
+</table>
+<p>Note that <code>savings_rate</code> is stored as a fraction, not a percentage. The public API accepts this field as a percentage in the range 0–100 and converts it before inference. The absence of that conversion in an earlier build was one of the defects discussed in Section 22.</p>
+<hr />
+<blockquote>
+<p><strong>Figure 12.1</strong> — <em>Class distribution of <code>risk_category</code>.</em> Already generated at <code>data/processed/plots/risk_category_distribution.png</code>. Place in Section 12.4.</p>
+<p><strong>Figure 12.2</strong> — <em>Correlation heatmap of the numeric features.</em> Already generated at <code>data/processed/plots/correlation_matrix.png</code>. Use it to support the correlation table in Section 12.3. Place there.</p>
+<p><strong>Figure 12.3</strong> — <em>Distribution of the continuous <code>risk_score</code> with the 35th and 80th percentile cut points overlaid, and the N(0, 8) noise band shaded.</em> Not yet generated. Add a plotting block to <code>generate_dataset.py</code> after the <code>risk_score</code> array is computed. This is the single most useful figure in the report, because it makes the irreducible class overlap visible rather than merely asserted. Place in Section 12.4 immediately after the <code>risk_score</code> equation.</p>
+<p><strong>Table 12.1</strong> — <em>Full column dictionary.</em> Thirty rows: name, type, group, permitted values or range, and whether the column is used as a model feature. Derive from <code>data/raw/dataset_description.md</code> and <code>ml/models/feature_columns.json</code>. Place as an appendix and reference it from Section 12.2.</p>
+</blockquote></body></html>

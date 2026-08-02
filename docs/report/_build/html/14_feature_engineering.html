@@ -1,0 +1,270 @@
+<!doctype html><html><head><meta charset='utf-8'><title>14_feature_engineering</title><style>
+@page { size: A4; margin: 20mm 18mm 20mm 18mm; }
+@page :first { margin-top: 24mm; }
+html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+body {
+  font-family: "Charter", "Georgia", "Times New Roman", serif;
+  font-size: 10.5pt; line-height: 1.52; color: #14171a; margin: 0;
+  hyphens: auto; text-align: justify;
+}
+h1, h2, h3 { font-family: "Helvetica Neue", Arial, sans-serif; color: #0b0d0f; text-align: left; }
+h1 { font-size: 19pt; line-height: 1.2; margin: 0 0 1.1em; padding-bottom: .35em;
+     border-bottom: 2px solid #14171a; break-after: avoid; }
+h2 { font-size: 13pt; margin: 1.7em 0 .55em; break-after: avoid; }
+h3 { font-size: 11pt; margin: 1.3em 0 .45em; break-after: avoid; }
+p { margin: 0 0 .75em; orphans: 3; widows: 3; }
+strong { font-weight: 600; }
+a { color: #14171a; text-decoration: none; }
+
+/* Tables */
+table { border-collapse: collapse; width: 100%; margin: 1em 0 1.2em;
+        font-size: 9.2pt; break-inside: avoid; font-family: "Helvetica Neue", Arial, sans-serif; }
+thead { background: #f2f4f6; }
+th, td { border: 1px solid #ccd2d8; padding: 5px 8px; text-align: left; vertical-align: top; }
+th { font-weight: 600; }
+tbody tr:nth-child(even) { background: #fafbfc; }
+
+/* Code */
+code { font-family: "SF Mono", "Menlo", monospace; font-size: 8.8pt;
+       background: #f4f6f8; padding: 1px 4px; border-radius: 3px; }
+pre { background: #f7f9fa; border: 1px solid #e2e7ec; border-left: 3px solid #8b98a5;
+      padding: 9px 12px; border-radius: 3px; overflow-x: auto; break-inside: avoid;
+      font-size: 8.6pt; line-height: 1.42; text-align: left; }
+pre code { background: none; padding: 0; font-size: inherit; }
+
+/* Figure / screenshot callouts */
+blockquote { margin: .9em 0; padding: .6em .9em; background: #fffdf3;
+             border-left: 3px solid #d9b23a; font-size: 9.4pt; break-inside: avoid;
+             font-family: "Helvetica Neue", Arial, sans-serif; text-align: left; }
+blockquote p { margin: 0 0 .35em; }
+blockquote p:last-child { margin-bottom: 0; }
+
+/* Rendered mermaid diagrams */
+figure.diagram { margin: 1.2em 0; text-align: center; break-inside: avoid; page-break-inside: avoid; }
+figure.diagram svg { max-width: 100%; height: auto; }
+figure.diagram figcaption { font-size: 8.6pt; color: #5b6770; margin-top: .5em;
+                            font-family: "Helvetica Neue", Arial, sans-serif; }
+
+hr { border: none; border-top: 1px solid #dde2e7; margin: 1.6em 0; }
+ul, ol { margin: 0 0 .8em; padding-left: 1.4em; }
+li { margin-bottom: .22em; }
+.section-break { break-before: page; }
+</style></head><body><h1 id="14-feature-engineering">14. Feature Engineering</h1>
+<h2 id="141-objective">14.1 Objective</h2>
+<p>Seven features are derived from the thirty raw columns. Their purpose is to express quantities that the model would otherwise have to reconstruct from combinations of inputs — a tree ensemble can approximate a ratio through repeated axis-aligned splits, but it does so inefficiently and with a boundary at every split, whereas supplying the ratio directly lets a single split capture the relationship.</p>
+<p>After encoding and derivation, the table carries 61 columns, of which 48 are presented to the model as features. The remaining thirteen are the target column <code>risk_category</code>, the two unused targets <code>expected_savings_increase</code> and <code>financial_decision_score</code>, the five original categorical columns superseded by their encoded forms, and the five one-hot dummies of <code>investment_preference</code>, excluded because that column is itself a target. Section 14.5 gives the full accounting.</p>
+<h2 id="142-the-derived-features">14.2 The Derived Features</h2>
+<table>
+<thead>
+<tr>
+<th>Feature</th>
+<th>Definition</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>debt_to_income_ratio</code></td>
+<td><code>total_debt / (monthly_income × 12)</code></td>
+</tr>
+<tr>
+<td><code>savings_ratio</code></td>
+<td><code>(monthly_income − monthly_expenses) / monthly_income</code></td>
+</tr>
+<tr>
+<td><code>expense_ratio</code></td>
+<td><code>monthly_expenses / monthly_income</code></td>
+</tr>
+<tr>
+<td><code>luxury_to_income_ratio</code></td>
+<td><code>(luxury_spending_pct / 100) × monthly_expenses / monthly_income</code></td>
+</tr>
+<tr>
+<td><code>age_income_ratio</code></td>
+<td><code>monthly_income / age</code></td>
+</tr>
+<tr>
+<td><code>behavioral_composite_score</code></td>
+<td>weighted min–max composite, scale 0–100</td>
+</tr>
+<tr>
+<td><code>financial_discipline_score</code></td>
+<td>weighted min–max composite, scale 0–100</td>
+</tr>
+</tbody>
+</table>
+<p>Observed ranges across the processed dataset:</p>
+<table>
+<thead>
+<tr>
+<th>Feature</th>
+<th>Min</th>
+<th>Mean</th>
+<th>Max</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>debt_to_income_ratio</td>
+<td>0.000</td>
+<td>0.052</td>
+<td>1.247</td>
+</tr>
+<tr>
+<td>savings_ratio</td>
+<td>−0.582</td>
+<td>0.319</td>
+<td>0.857</td>
+</tr>
+<tr>
+<td>expense_ratio</td>
+<td>0.143</td>
+<td>0.681</td>
+<td>1.582</td>
+</tr>
+<tr>
+<td>luxury_to_income_ratio</td>
+<td>0.000</td>
+<td>0.064</td>
+<td>0.482</td>
+</tr>
+<tr>
+<td>age_income_ratio</td>
+<td>104.5</td>
+<td>1508.6</td>
+<td>6764.8</td>
+</tr>
+<tr>
+<td>behavioral_composite_score</td>
+<td>0.0</td>
+<td>30.7</td>
+<td>97.0</td>
+</tr>
+<tr>
+<td>financial_discipline_score</td>
+<td>7.3</td>
+<td>66.7</td>
+<td>100.0</td>
+</tr>
+</tbody>
+</table>
+<p>Note that <code>savings_ratio</code> runs negative and <code>expense_ratio</code> exceeds unity for records whose expenses surpass income. Those records are real in the sense that the generator produces them, and they are retained rather than discarded.</p>
+<h2 id="143-the-two-composite-indices">14.3 The Two Composite Indices</h2>
+<p>The five ratio features are pointwise functions of a single record. The two composite indices are not, and this distinction turned out to matter more than anything else in the pipeline.</p>
+<p>Each index is a weighted sum of min–max normalised components:</p>
+<pre><code>behavioral_composite_score = 100 × ( 0.35·norm(investment_experience_years)
+                                   + 0.25·norm(investment_frequency_encoded)
+                                   + 0.20·norm(insurance_coverage_encoded)
+                                   + 0.20·norm(emergency_fund_months) )
+
+financial_discipline_score = 100 × ( 0.40·norm(savings_rate)
+                                   + 0.35·norm(credit_score)
+                                   + 0.25·(1 − norm(debt_to_income_ratio)) )
+</code></pre>
+<p>The weights were assigned by judgement rather than fitted. Investment experience dominates the behavioural index on the reasoning that sustained participation in markets is a stronger indicator of engagement than any single-point attribute; savings rate dominates the discipline index because it is the most direct expression of whether a person lives below their means.</p>
+<p>The normalisation is where the difficulty lies. <code>norm(·)</code> rescales a column by its minimum and maximum <strong>across the entire training set</strong>. A single incoming prediction request contains one record and therefore has no column from which to compute those bounds. An earlier implementation resolved this by inventing substitute formulas inside the inference module — capping savings at thirty points, scaling credit score against a 300–850 range, and so on — which produced numbers on the same 0–100 scale that bore no relation to the values the model was trained on.</p>
+<p>The system now persists the fitted bounds. <code>preprocess.py</code> writes the minimum and maximum of each normalised component, together with the ordinal maps, the IQR clip bounds and the imputation medians, to <code>ml/models/preprocessing_params.json</code>. The inference module loads that file and reproduces the training computation exactly. Verification of the equivalence is reported in Section 9.7 and the defect itself in Section 22.</p>
+<p>An incoming value outside the fitted range is clamped to <code>[0, 1]</code> after normalisation rather than allowed to extrapolate, since the training columns had already been IQR-clipped before their bounds were taken.</p>
+<h2 id="144-redundancy-among-the-derived-features">14.4 Redundancy Among the Derived Features</h2>
+<p>Three of the model's five most important features encode the same underlying quantity, and the feature set should not have been left in this state.</p>
+<p><code>savings_ratio</code> and <code>expense_ratio</code> are exact complements. From their definitions, <code>savings_ratio = 1 − expense_ratio</code> identically, and this is confirmed empirically: their Pearson correlation over the 22,000 records is <strong>−1.000000</strong>, and <code>|savings_ratio + expense_ratio − 1|</code> never exceeds 4.4 × 10⁻¹⁶. One carries no information the other lacks.</p>
+<p><code>savings_rate</code>, the raw dataset column, is a third encoding of the same quantity. The generator computes the implied surplus and then adds Gaussian noise of standard deviation 0.05 before clipping, so <code>savings_rate</code> is a noisy observation of <code>savings_ratio</code>, with a correlation of 0.944 between them.</p>
+<p>The consequence is visible in the global SHAP ranking:</p>
+<table>
+<thead>
+<tr>
+<th>Rank</th>
+<th>Feature</th>
+<th>Mean abs. SHAP</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>savings_rate</td>
+<td>0.0462</td>
+</tr>
+<tr>
+<td>2</td>
+<td>financial_discipline_score</td>
+<td>0.0407</td>
+</tr>
+<tr>
+<td>3</td>
+<td>emergency_fund_months</td>
+<td>0.0280</td>
+</tr>
+<tr>
+<td>4</td>
+<td>savings_ratio</td>
+<td>0.0217</td>
+</tr>
+<tr>
+<td>5</td>
+<td>expense_ratio</td>
+<td>0.0217</td>
+</tr>
+<tr>
+<td>6</td>
+<td>investment_experience_years</td>
+<td>0.0147</td>
+</tr>
+<tr>
+<td>7</td>
+<td>behavioral_composite_score</td>
+<td>0.0134</td>
+</tr>
+<tr>
+<td>8</td>
+<td>credit_score</td>
+<td>0.0130</td>
+</tr>
+</tbody>
+</table>
+<p>Ranks four and five carry identical importance to four decimal places, which is what one expects when a tree ensemble is offered two perfectly anti-correlated columns: each split that could have used one is equally likely to use the other, and the attribution divides between them. The apparent importance of the savings signal is thereby split across three rows of the table rather than concentrated in one, and a reader taking the ranking at face value would underestimate how dominant that single quantity is.</p>
+<p>A Random Forest is not harmed in its predictive accuracy by collinear inputs the way a linear model is, so this redundancy costs little in performance. It costs a great deal in interpretability, which is the stated purpose of computing SHAP values at all. Removing <code>expense_ratio</code> — or equivalently, removing <code>savings_ratio</code> — would leave the model's accuracy essentially unchanged while making the explanation honest. This was identified after the model was trained and the results generated; it is recorded here and in Section 26 rather than silently corrected, because correcting it would require regenerating every figure in Section 23.</p>
+<p><code>financial_discipline_score</code> compounds the issue, since it takes <code>savings_rate</code> as its highest-weighted component at 0.40. The second-ranked feature is thus partly a function of the first.</p>
+<h2 id="145-leakage">14.5 Leakage</h2>
+<p>Two columns were excluded from the feature set on leakage grounds. <code>financial_decision_score</code> is a weighted sum of savings rate, credit score, debt burden, investment experience and emergency-fund coverage — the same five quantities that determine <code>risk_score</code>, from which the target label is cut. Supplying it as a feature would hand the model a noisy copy of the label. <code>expected_savings_increase</code> is likewise a function of the generator's internal discipline variable.</p>
+<p>The five one-hot columns of <code>investment_preference</code> are also dropped, since that column serves as the secondary target.</p>
+<p>Verification confirms that <code>feature_columns.json</code> contains none of these seven columns. The 48 features decompose as:</p>
+<table>
+<thead>
+<tr>
+<th>Origin</th>
+<th>Count</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Raw numeric columns passed through unchanged</td>
+<td>16</td>
+</tr>
+<tr>
+<td>Ordinal encodings</td>
+<td>5</td>
+</tr>
+<tr>
+<td>One-hot dummies (gender, occupation, marital status, location, employment type)</td>
+<td>20</td>
+</tr>
+<tr>
+<td>Derived features</td>
+<td>7</td>
+</tr>
+<tr>
+<td><strong>Total</strong></td>
+<td><strong>48</strong></td>
+</tr>
+</tbody>
+</table>
+<p>The five original categorical columns are absent, superseded by their encoded forms. Of the 25 dummies produced by one-hot encoding six nominal columns, the 5 belonging to <code>investment_preference</code> are excluded, leaving 20.</p>
+<h2 id="146-what-was-not-engineered">14.6 What Was Not Engineered</h2>
+<p>No interaction terms were constructed, since a tree ensemble discovers interactions through successive splits and explicit products would be redundant. No temporal features exist, because the dataset has no time dimension: each record is a single snapshot with no history. No text or free-form fields are present, so no embedding or vectorisation step is required.</p>
+<p>Feature scaling was fitted and persisted as <code>scaler.pkl</code> during preprocessing but is not applied to the models actually deployed. Tree ensembles are invariant to monotone transformations of individual features, so standardisation changes nothing for the Random Forest that was selected. It would have mattered for the neural network, which was evaluated during model selection and rejected.</p>
+<hr />
+<blockquote>
+<p><strong>Figure 14.1</strong> — <em>Scatter of <code>savings_ratio</code> against <code>expense_ratio</code>,</em> showing the exact anti-diagonal. A single plot demonstrates the redundancy argued in Section 14.4 more convincingly than the correlation coefficient. Generate with a two-line matplotlib block over <code>processed_dataset.csv</code>. Place in Section 14.4.</p>
+<p><strong>Figure 14.2</strong> — <em>Global SHAP summary (beeswarm).</em> Already generated at <code>ml/plots/shap_summary.png</code>. Place in Section 14.4 alongside the importance table.</p>
+<p><strong>Figure 14.3</strong> — <em>Distribution of the two composite scores,</em> <code>behavioral_composite_score</code> and <code>financial_discipline_score</code>, as overlaid histograms. Note in the caption that the behavioural index is left-skewed with mean 30.7, reflecting that most synthetic records have limited investment experience. Existing boxplots at <code>data/processed/plots/financial_discipline_vs_risk.png</code> may serve instead. Place in Section 14.3.</p>
+<p><strong>Table 14.1</strong> — <em>Feature provenance.</em> Forty-eight rows grouped by origin: raw numeric (11), ordinal encoded (5), one-hot (25), derived (7). Mark each as used or excluded, and give the exclusion reason for the six leakage columns. Place as an appendix, referenced from Section 14.5.</p>
+</blockquote></body></html>

@@ -1,0 +1,71 @@
+<!doctype html><html><head><meta charset='utf-8'><title>28_conclusion</title><style>
+@page { size: A4; margin: 20mm 18mm 20mm 18mm; }
+@page :first { margin-top: 24mm; }
+html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+body {
+  font-family: "Charter", "Georgia", "Times New Roman", serif;
+  font-size: 10.5pt; line-height: 1.52; color: #14171a; margin: 0;
+  hyphens: auto; text-align: justify;
+}
+h1, h2, h3 { font-family: "Helvetica Neue", Arial, sans-serif; color: #0b0d0f; text-align: left; }
+h1 { font-size: 19pt; line-height: 1.2; margin: 0 0 1.1em; padding-bottom: .35em;
+     border-bottom: 2px solid #14171a; break-after: avoid; }
+h2 { font-size: 13pt; margin: 1.7em 0 .55em; break-after: avoid; }
+h3 { font-size: 11pt; margin: 1.3em 0 .45em; break-after: avoid; }
+p { margin: 0 0 .75em; orphans: 3; widows: 3; }
+strong { font-weight: 600; }
+a { color: #14171a; text-decoration: none; }
+
+/* Tables */
+table { border-collapse: collapse; width: 100%; margin: 1em 0 1.2em;
+        font-size: 9.2pt; break-inside: avoid; font-family: "Helvetica Neue", Arial, sans-serif; }
+thead { background: #f2f4f6; }
+th, td { border: 1px solid #ccd2d8; padding: 5px 8px; text-align: left; vertical-align: top; }
+th { font-weight: 600; }
+tbody tr:nth-child(even) { background: #fafbfc; }
+
+/* Code */
+code { font-family: "SF Mono", "Menlo", monospace; font-size: 8.8pt;
+       background: #f4f6f8; padding: 1px 4px; border-radius: 3px; }
+pre { background: #f7f9fa; border: 1px solid #e2e7ec; border-left: 3px solid #8b98a5;
+      padding: 9px 12px; border-radius: 3px; overflow-x: auto; break-inside: avoid;
+      font-size: 8.6pt; line-height: 1.42; text-align: left; }
+pre code { background: none; padding: 0; font-size: inherit; }
+
+/* Figure / screenshot callouts */
+blockquote { margin: .9em 0; padding: .6em .9em; background: #fffdf3;
+             border-left: 3px solid #d9b23a; font-size: 9.4pt; break-inside: avoid;
+             font-family: "Helvetica Neue", Arial, sans-serif; text-align: left; }
+blockquote p { margin: 0 0 .35em; }
+blockquote p:last-child { margin-bottom: 0; }
+
+/* Rendered mermaid diagrams */
+figure.diagram { margin: 1.2em 0; text-align: center; break-inside: avoid; page-break-inside: avoid; }
+figure.diagram svg { max-width: 100%; height: auto; }
+figure.diagram figcaption { font-size: 8.6pt; color: #5b6770; margin-top: .5em;
+                            font-family: "Helvetica Neue", Arial, sans-serif; }
+
+hr { border: none; border-top: 1px solid #dde2e7; margin: 1.6em 0; }
+ul, ol { margin: 0 0 .8em; padding-left: 1.4em; }
+li { margin-bottom: .22em; }
+.section-break { break-before: page; }
+</style></head><body><h1 id="28-conclusion">28. Conclusion</h1>
+<h2 id="281-what-was-built">28.1 What Was Built</h2>
+<p>An end-to-end system that elicits twenty-six demographic, financial and lifestyle attributes through a four-step web form, classifies the respondent into one of three financial-risk bands with a tuned Random Forest, attributes the outcome with Shapley values, persists the assessment to PostgreSQL, and renders the result through a React dashboard. Three services compose under Docker. Seven REST endpoints are validated by schemas that also generate their own documentation.</p>
+<p>The dataset is synthetic: 22,000 records produced by a generator with documented conditional dependencies, because no public dataset joins these attributes to a behavioural risk label, and Section 5.2 argues no such label exists even in principle.</p>
+<h2 id="282-what-was-found">28.2 What Was Found</h2>
+<p><strong>The model operates at the Bayes limit.</strong> Because the label's generating function is known, the maximum accuracy attainable by any classifier can be computed rather than guessed. It is 0.6104, the noise term having a standard deviation of 8.0 against a signal of 7.64. The Random Forest attains 0.6039 — 98.9% of the ceiling, and 95.9% of the accuracy available above the majority baseline. Its predicted class distribution tracks the Bayes rule's rather than the truth, and 1,706 of its 1,743 errors fall between adjacent bands. Read against 1.0 the result looks mediocre; read against what the data permits, the model recovers nearly all recoverable signal.</p>
+<p><strong>A negative result is reported in full.</strong> The secondary model predicting investment preference scores 0.2586 against a majority baseline of 0.2869 and ranks at chance. Reading the generator shows the label is drawn from a distribution conditioned on the risk band alone, giving a ceiling of 0.3675 under perfect knowledge. No algorithm, no tuning and no additional feature could have rescued it. The diagnosis came from forty lines of data-generation code, not from another experiment.</p>
+<p><strong>The worst defects produced no bad numbers.</strong> Feature engineering was implemented twice — once for training, once for serving — and the two disagreed on the scale of <code>savings_rate</code>, the denominator of <code>debt_to_income_ratio</code>, the direction of <code>age_income_ratio</code>, the spelling of four ordinal maps, and the formula for both composite scores. Every reported metric stayed correct, because the test set was evaluated through the training path. Every live prediction was wrong. Separately, a third of the <code>insurance_coverage</code> column was destroyed by <code>pandas</code> on load; the explanation pipeline discarded the sign of every attribution before display; and the form submitted to the non-persisting endpoint, so nothing a user entered ever reached the database.</p>
+<p>Five of those six defects share one structure. None was a mistake inside a function; each lived in the <em>agreement between two representations of the same thing</em> — two implementations of a feature, two spellings of a category, two endpoints of the same shape, a colour legend and the values it coloured. All eleven tests passed throughout. What exposed them was checking one representation against another. This is the hazard Sculley and colleagues describe as the hidden technical debt of machine learning systems [8], and it is the finding of this project most likely to generalise.</p>
+<h2 id="283-what-was-not-achieved">28.3 What Was Not Achieved</h2>
+<p>Seven of ten objectives were met, two of them only after defects found while writing this report were repaired.</p>
+<p>Two were not met. The explainability module returns absolute magnitudes averaged across classes rather than signed attributions to the predicted band, so the interface's caption — <em>"Blue = increases risk score, Red = decreases risk score"</em> — describes a distinction its data does not carry, and no bar is ever red. This is uncomfortable, because explanation is the sole feature distinguishing this system from the rubric it proposes to replace. The repair is two lines and is deferred only because it invalidates every SHAP figure already generated. And the investment-preference objective was unattainable by construction.</p>
+<p>The redundancy among <code>savings_rate</code>, <code>savings_ratio</code> and <code>expense_ratio</code> — the latter two correlating at exactly −1.000000 — splits one dominant signal across four of the five top-ranked features, so the explanation understates how completely one quantity determines the model. Accuracy is untouched; interpretation is not.</p>
+<h2 id="284-what-it-does-not-show">28.4 What It Does Not Show</h2>
+<p>Nothing in this report is evidence about human financial behaviour. Every correlation recovered is one the generator was written to contain. The project's own premise — that lifestyle spending reveals dispositions self-report conceals — is untestable here, because no lifestyle attribute enters the generating function. That no lifestyle feature reaches the top ten SHAP ranks says something about the generator and nothing about people.</p>
+<p>The Bayes-ceiling analysis, the report's strongest methodological contribution, is available only because the data is synthetic. The analysis and the limitation are the same fact seen from two sides.</p>
+<h2 id="285-closing-assessment">28.5 Closing Assessment</h2>
+<p>Judged as science, the project establishes nothing about behavioural finance and applies no novel method.</p>
+<p>Judged as engineering, it delivers a working, containerised, verified pipeline and an evaluation more careful than the result required — accuracy reported against a derived ceiling rather than against perfection, serving-time feature computation proved identical to training-time, and a failing component reported as failing rather than quietly removed.</p>
+<p>The most durable lesson is the least glamorous. A test set drawn from the training pipeline certifies the estimator and says nothing about the code that will serve it. The accuracy in a report and the accuracy a user receives are different quantities, and in this system they differed for most of its existence, silently, while every metric agreed. Establishing that they now coincide took one comparison, sixty seconds of compute, and no new theory — and it should have been the first thing written, not among the last.</p></body></html>

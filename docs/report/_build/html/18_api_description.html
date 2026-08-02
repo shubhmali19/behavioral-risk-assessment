@@ -1,0 +1,256 @@
+<!doctype html><html><head><meta charset='utf-8'><title>18_api_description</title><style>
+@page { size: A4; margin: 20mm 18mm 20mm 18mm; }
+@page :first { margin-top: 24mm; }
+html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+body {
+  font-family: "Charter", "Georgia", "Times New Roman", serif;
+  font-size: 10.5pt; line-height: 1.52; color: #14171a; margin: 0;
+  hyphens: auto; text-align: justify;
+}
+h1, h2, h3 { font-family: "Helvetica Neue", Arial, sans-serif; color: #0b0d0f; text-align: left; }
+h1 { font-size: 19pt; line-height: 1.2; margin: 0 0 1.1em; padding-bottom: .35em;
+     border-bottom: 2px solid #14171a; break-after: avoid; }
+h2 { font-size: 13pt; margin: 1.7em 0 .55em; break-after: avoid; }
+h3 { font-size: 11pt; margin: 1.3em 0 .45em; break-after: avoid; }
+p { margin: 0 0 .75em; orphans: 3; widows: 3; }
+strong { font-weight: 600; }
+a { color: #14171a; text-decoration: none; }
+
+/* Tables */
+table { border-collapse: collapse; width: 100%; margin: 1em 0 1.2em;
+        font-size: 9.2pt; break-inside: avoid; font-family: "Helvetica Neue", Arial, sans-serif; }
+thead { background: #f2f4f6; }
+th, td { border: 1px solid #ccd2d8; padding: 5px 8px; text-align: left; vertical-align: top; }
+th { font-weight: 600; }
+tbody tr:nth-child(even) { background: #fafbfc; }
+
+/* Code */
+code { font-family: "SF Mono", "Menlo", monospace; font-size: 8.8pt;
+       background: #f4f6f8; padding: 1px 4px; border-radius: 3px; }
+pre { background: #f7f9fa; border: 1px solid #e2e7ec; border-left: 3px solid #8b98a5;
+      padding: 9px 12px; border-radius: 3px; overflow-x: auto; break-inside: avoid;
+      font-size: 8.6pt; line-height: 1.42; text-align: left; }
+pre code { background: none; padding: 0; font-size: inherit; }
+
+/* Figure / screenshot callouts */
+blockquote { margin: .9em 0; padding: .6em .9em; background: #fffdf3;
+             border-left: 3px solid #d9b23a; font-size: 9.4pt; break-inside: avoid;
+             font-family: "Helvetica Neue", Arial, sans-serif; text-align: left; }
+blockquote p { margin: 0 0 .35em; }
+blockquote p:last-child { margin-bottom: 0; }
+
+/* Rendered mermaid diagrams */
+figure.diagram { margin: 1.2em 0; text-align: center; break-inside: avoid; page-break-inside: avoid; }
+figure.diagram svg { max-width: 100%; height: auto; }
+figure.diagram figcaption { font-size: 8.6pt; color: #5b6770; margin-top: .5em;
+                            font-family: "Helvetica Neue", Arial, sans-serif; }
+
+hr { border: none; border-top: 1px solid #dde2e7; margin: 1.6em 0; }
+ul, ol { margin: 0 0 .8em; padding-left: 1.4em; }
+li { margin-bottom: .22em; }
+.section-break { break-before: page; }
+</style></head><body><h1 id="18-api-description">18. API Description</h1>
+<h2 id="181-the-contract-as-an-artefact">18.1 The Contract as an Artefact</h2>
+<p>The interface between the browser and the service is defined in <code>docs/api-contract.json</code>, and that file is treated as authoritative rather than descriptive. The backend's Pydantic schemas and the frontend's TypeScript types are both required to match it, and any change to an endpoint is made to the contract first.</p>
+<p>This discipline was adopted after a failure, not in anticipation of one. The two sides had been developed against separate mental models of the interface, and six divergences accumulated before anything was tested end to end: the frontend expected a flat prediction object where the backend returned an envelope; it read a field named <code>confidence</code> where the backend emitted <code>risk_confidence</code>; it posted assessments to <code>/assessments</code> where the route was <code>/assessment</code>; and three of the analytics field names disagreed. Each was individually trivial and collectively fatal — the application compiled, the backend passed its own tests, and no request succeeded. Consolidating the interface into one document that both sides are checked against removed the class of error rather than the instances of it.</p>
+<h2 id="182-endpoints">18.2 Endpoints</h2>
+<p>Seven routes are served from <code>http://localhost:8000</code>.</p>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Path</th>
+<th>Persists</th>
+<th>Response</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>GET</code></td>
+<td><code>/health</code></td>
+<td>no</td>
+<td>bare object</td>
+</tr>
+<tr>
+<td><code>GET</code></td>
+<td><code>/model/info</code></td>
+<td>no</td>
+<td>bare object</td>
+</tr>
+<tr>
+<td><code>POST</code></td>
+<td><code>/predict</code></td>
+<td>no</td>
+<td>enveloped</td>
+</tr>
+<tr>
+<td><code>POST</code></td>
+<td><code>/assessment</code></td>
+<td>yes</td>
+<td>enveloped, with <code>assessment_id</code></td>
+</tr>
+<tr>
+<td><code>GET</code></td>
+<td><code>/assessment/{id}</code></td>
+<td>no</td>
+<td>enveloped, with <code>assessment_id</code></td>
+</tr>
+<tr>
+<td><code>GET</code></td>
+<td><code>/assessments</code></td>
+<td>no</td>
+<td>enveloped list, with <code>total</code></td>
+</tr>
+<tr>
+<td><code>GET</code></td>
+<td><code>/analytics</code></td>
+<td>no</td>
+<td>bare object</td>
+</tr>
+</tbody>
+</table>
+<p>Interactive documentation is generated automatically by FastAPI from the Pydantic schemas and served at <code>/docs</code>. Because the schemas are the same objects that perform validation, the published documentation cannot drift from the enforced behaviour.</p>
+<h2 id="183-response-envelope">18.3 Response Envelope</h2>
+<p>The four prediction and assessment endpoints return:</p>
+<pre><code class="language-json">{ &quot;success&quot;: true, &quot;data&quot;: { … } }
+</code></pre>
+<p><code>POST /assessment</code> and <code>GET /assessment/{id}</code> add <code>assessment_id</code> as a sibling of <code>data</code>, not inside it. <code>GET /assessments</code> substitutes <code>total</code> and <code>items</code> for <code>data</code>.</p>
+<p>The remaining three endpoints return their payload unwrapped. This is an inconsistency rather than a design decision, and it should be recorded as such: a client cannot determine from the shape of a response whether it needs to unwrap. The frontend absorbs the difference inside <code>src/api/assessments.ts</code>, where <code>postPredict</code> returns <code>response.data.data</code> while <code>getAnalytics</code> returns <code>response.data</code>. No page component sees the distinction, so the cost is contained, but a second consumer of this API would have to read the contract to discover which convention applies where.</p>
+<h2 id="184-request-schema">18.4 Request Schema</h2>
+<p>All four write endpoints accept the same body, twenty-six fields validated by <code>AssessmentInput</code>. Categorical fields are <code>Literal</code> types constrained to the exact strings present in the training vocabulary; numeric fields carry explicit bounds. The model declares <code>extra = "forbid"</code>, so an unrecognised key is an error rather than an ignored field.</p>
+<p>An example request:</p>
+<pre><code class="language-bash">curl -X POST http://localhost:8000/predict \
+  -H 'Content-Type: application/json' \
+  -d '{
+    &quot;age&quot;: 30, &quot;gender&quot;: &quot;Male&quot;, &quot;education&quot;: &quot;Graduate&quot;,
+    &quot;occupation&quot;: &quot;Salaried&quot;, &quot;income_level&quot;: &quot;Middle&quot;,
+    &quot;marital_status&quot;: &quot;Single&quot;, &quot;dependents&quot;: 0,
+    &quot;location&quot;: &quot;Urban&quot;, &quot;employment_type&quot;: &quot;Full-Time&quot;,
+    &quot;years_of_experience&quot;: 5,
+    &quot;monthly_income&quot;: 50000, &quot;monthly_expenses&quot;: 35000,
+    &quot;savings_rate&quot;: 30, &quot;emergency_fund_months&quot;: 3,
+    &quot;total_debt&quot;: 100000, &quot;loan_amount&quot;: 500000,
+    &quot;credit_score&quot;: 720, &quot;investment_experience_years&quot;: 3,
+    &quot;investment_frequency&quot;: &quot;Monthly&quot;, &quot;insurance_coverage&quot;: &quot;Basic&quot;,
+    &quot;shopping_frequency&quot;: &quot;Monthly&quot;, &quot;online_spending_pct&quot;: 30,
+    &quot;luxury_spending_pct&quot;: 10, &quot;subscription_count&quot;: 3,
+    &quot;gaming_expenses_monthly&quot;: 500, &quot;travel_expenses_annual&quot;: 20000
+  }'
+</code></pre>
+<p>Note that <code>savings_rate</code> is supplied as a percentage. The inference module converts it to the fraction the model was trained on, as Section 13.5 describes.</p>
+<h2 id="185-response-schema">18.5 Response Schema</h2>
+<p>The <code>data</code> object returned by <code>/predict</code>, <code>/assessment</code> and <code>/assessment/{id}</code> has twelve keys:</p>
+<table>
+<thead>
+<tr>
+<th>Key</th>
+<th>Type</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>risk_category</code></td>
+<td>string</td>
+<td>Low, Medium or High</td>
+</tr>
+<tr>
+<td><code>risk_confidence</code></td>
+<td>float</td>
+<td>probability of the predicted class, 0–1</td>
+</tr>
+<tr>
+<td><code>risk_probabilities</code></td>
+<td>object</td>
+<td>probability across all three classes</td>
+</tr>
+<tr>
+<td><code>investment_preference</code></td>
+<td>string</td>
+<td>FD, Mutual Funds, Stocks, Gold or Crypto</td>
+</tr>
+<tr>
+<td><code>investment_confidence</code></td>
+<td>float</td>
+<td>0–1</td>
+</tr>
+<tr>
+<td><code>financial_decision_score</code></td>
+<td>float</td>
+<td>0–100</td>
+</tr>
+<tr>
+<td><code>behavioral_composite_score</code></td>
+<td>float</td>
+<td>0–100</td>
+</tr>
+<tr>
+<td><code>financial_discipline_score</code></td>
+<td>float</td>
+<td>0–100</td>
+</tr>
+<tr>
+<td><code>shap_values</code></td>
+<td>object</td>
+<td>ten features → attribution magnitude (always ≥ 0; see §21.4)</td>
+</tr>
+<tr>
+<td><code>feature_importance</code></td>
+<td>object</td>
+<td>ten features → global importance</td>
+</tr>
+<tr>
+<td><code>recommendations</code></td>
+<td>array</td>
+<td>3–5 strings, rule-generated</td>
+</tr>
+<tr>
+<td><code>behavioral_biases</code></td>
+<td>array</td>
+<td>rule-detected, may be empty</td>
+</tr>
+</tbody>
+</table>
+<p><code>investment_preference</code> and <code>investment_confidence</code> are returned by the API and rendered by the interface, but the model producing them does not work. Section 22 shows that its accuracy of 0.259 falls below the 0.287 majority-class baseline, and that no model could do materially better given how the label was constructed. The fields remain in the contract; the report does not claim they are meaningful.</p>
+<h2 id="186-error-handling">18.6 Error Handling</h2>
+<table>
+<thead>
+<tr>
+<th>Status</th>
+<th>Condition</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>422</td>
+<td>request body fails schema validation; response names the offending field</td>
+</tr>
+<tr>
+<td>404</td>
+<td><code>GET /assessment/{id}</code> for an unknown identifier</td>
+</tr>
+<tr>
+<td>500</td>
+<td>prediction raised during <code>POST /assessment</code>; the assessment row is marked <code>failed</code></td>
+</tr>
+<tr>
+<td>503</td>
+<td><code>POST /predict</code> when the inference module failed to import at startup</td>
+</tr>
+</tbody>
+</table>
+<p>Validation errors are the common case and are informative. Submitting <code>"education": "Bachelor's"</code> — a value the interface once offered but the model has never seen — produces a 422 naming <code>education</code> and listing the four permitted literals. This is the correct behaviour: a silently accepted synonym would be encoded as the training median and would produce a plausible-looking prediction from an input the model cannot represent.</p>
+<p><code>GET /model/info</code> is an exception to the table. When it cannot locate the metadata file it returns <code>{"error": "..."}</code> with HTTP 200 rather than a 5xx. Because the path it consults is hardcoded to an absolute location on the development machine, this is the response it produces under Docker Compose. Section 16.7 records the defect.</p>
+<h2 id="187-analytics">18.7 Analytics</h2>
+<p><code>GET /analytics</code> aggregates over stored assessments and returns totals, the distribution of predicted risk categories and investment preferences, the mean of each of the three scores, and a per-day assessment count.</p>
+<p>The per-day count is the one query that could not be written portably. SQLite truncates a timestamp with <code>strftime('%Y-%m-%d', …)</code>; PostgreSQL requires <code>to_char(…, 'YYYY-MM-DD')</code> and rejects the former outright. The service inspects <code>db.bind.dialect.name</code> and emits the appropriate expression. Before this was introduced the endpoint returned HTTP 500 under Docker Compose while passing its tests against SQLite locally — a failure mode worth noting, since the test suite exercised a database the deployment does not use.</p>
+<h2 id="188-cross-origin-policy-and-authentication">18.8 Cross-Origin Policy and Authentication</h2>
+<p>CORS permits <code>http://localhost:5173</code> and <code>http://localhost:3000</code>, matching the Vite development server and the nginx container respectively, with credentials enabled and all methods and headers allowed.</p>
+<p>No authentication exists. There are no credentials, no sessions and no tokens; every endpoint is unauthenticated and every stored assessment is anonymous. The <code>users</code> table described in Section 17 is never written to for exactly this reason. The consequence is that <code>GET /assessments</code> returns every assessment any visitor has ever submitted, including the twenty-six financial fields of each, to any caller. For a demonstration system with synthetic inputs this is tolerable. For a system carrying real financial disclosures it would not be, and Section 26 records it as the most serious limitation of the implementation.</p>
+<hr />
+<blockquote>
+<p><strong>Screenshot 18.1</strong> — <em>Swagger UI at <code>/docs</code>,</em> all seven endpoints collapsed and visible in one frame. Place in Section 18.2.</p>
+<p><strong>Screenshot 18.2</strong> — <em>An expanded <code>POST /predict</code> in Swagger,</em> showing the generated request schema with the <code>Literal</code> enumerations. This demonstrates that the published documentation is the enforced schema. Place in Section 18.4.</p>
+<p><strong>Screenshot 18.3</strong> — <em>A 422 response,</em> produced by submitting <code>"education": "Bachelor's"</code>. Place in Section 18.6.</p>
+<p><strong>Figure 18.1</strong> — <em>Sequence diagram for <code>POST /assessment</code>,</em> spanning browser, router, schema validation, inference module and database. This is Figure 11.2; render it once from the Mermaid source in Section 11.2 and cross-reference.</p>
+</blockquote></body></html>

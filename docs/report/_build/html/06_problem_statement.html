@@ -1,0 +1,80 @@
+<!doctype html><html><head><meta charset='utf-8'><title>06_problem_statement</title><style>
+@page { size: A4; margin: 20mm 18mm 20mm 18mm; }
+@page :first { margin-top: 24mm; }
+html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+body {
+  font-family: "Charter", "Georgia", "Times New Roman", serif;
+  font-size: 10.5pt; line-height: 1.52; color: #14171a; margin: 0;
+  hyphens: auto; text-align: justify;
+}
+h1, h2, h3 { font-family: "Helvetica Neue", Arial, sans-serif; color: #0b0d0f; text-align: left; }
+h1 { font-size: 19pt; line-height: 1.2; margin: 0 0 1.1em; padding-bottom: .35em;
+     border-bottom: 2px solid #14171a; break-after: avoid; }
+h2 { font-size: 13pt; margin: 1.7em 0 .55em; break-after: avoid; }
+h3 { font-size: 11pt; margin: 1.3em 0 .45em; break-after: avoid; }
+p { margin: 0 0 .75em; orphans: 3; widows: 3; }
+strong { font-weight: 600; }
+a { color: #14171a; text-decoration: none; }
+
+/* Tables */
+table { border-collapse: collapse; width: 100%; margin: 1em 0 1.2em;
+        font-size: 9.2pt; break-inside: avoid; font-family: "Helvetica Neue", Arial, sans-serif; }
+thead { background: #f2f4f6; }
+th, td { border: 1px solid #ccd2d8; padding: 5px 8px; text-align: left; vertical-align: top; }
+th { font-weight: 600; }
+tbody tr:nth-child(even) { background: #fafbfc; }
+
+/* Code */
+code { font-family: "SF Mono", "Menlo", monospace; font-size: 8.8pt;
+       background: #f4f6f8; padding: 1px 4px; border-radius: 3px; }
+pre { background: #f7f9fa; border: 1px solid #e2e7ec; border-left: 3px solid #8b98a5;
+      padding: 9px 12px; border-radius: 3px; overflow-x: auto; break-inside: avoid;
+      font-size: 8.6pt; line-height: 1.42; text-align: left; }
+pre code { background: none; padding: 0; font-size: inherit; }
+
+/* Figure / screenshot callouts */
+blockquote { margin: .9em 0; padding: .6em .9em; background: #fffdf3;
+             border-left: 3px solid #d9b23a; font-size: 9.4pt; break-inside: avoid;
+             font-family: "Helvetica Neue", Arial, sans-serif; text-align: left; }
+blockquote p { margin: 0 0 .35em; }
+blockquote p:last-child { margin-bottom: 0; }
+
+/* Rendered mermaid diagrams */
+figure.diagram { margin: 1.2em 0; text-align: center; break-inside: avoid; page-break-inside: avoid; }
+figure.diagram svg { max-width: 100%; height: auto; }
+figure.diagram figcaption { font-size: 8.6pt; color: #5b6770; margin-top: .5em;
+                            font-family: "Helvetica Neue", Arial, sans-serif; }
+
+hr { border: none; border-top: 1px solid #dde2e7; margin: 1.6em 0; }
+ul, ol { margin: 0 0 .8em; padding-left: 1.4em; }
+li { margin-bottom: .22em; }
+.section-break { break-before: page; }
+</style></head><body><h1 id="6-problem-statement">6. Problem Statement</h1>
+<h2 id="61-statement">6.1 Statement</h2>
+<blockquote>
+<p>Given twenty-six self-reported demographic, financial and lifestyle attributes of an individual, assign that individual to one of three financial-risk bands — Low, Medium or High — together with a calibrated confidence, and attribute the assignment to the individual's own inputs in a way that is faithful to the model that produced it; deliver this as a deployed system whose serving-time computation is verified to match its training-time computation, and whose reported accuracy is expressed relative to the maximum accuracy the data permits.</p>
+</blockquote>
+<h2 id="62-formalisation">6.2 Formalisation</h2>
+<p>Let <code>x ∈ 𝒳</code> be a record of twenty-six attributes, partitioned into demographic, financial and lifestyle groups. Let <code>y ∈ {Low, Medium, High}</code> be the risk band.</p>
+<p>A preprocessing map <code>φ : 𝒳 → ℝ⁴⁸</code> performs cleaning, outlier clipping, ordinal and one-hot encoding, and derives seven features. A classifier <code>f : ℝ⁴⁸ → Δ²</code> returns a probability vector over the three bands, and the predicted band is <code>ŷ = argmax f(φ(x))</code>.</p>
+<p>Three requirements distinguish this from a routine classification exercise.</p>
+<p><strong>Attribution.</strong> An explainer <code>ψ</code> must return, for each record, a vector of per-feature contributions to the predicted class that satisfies local accuracy, missingness and consistency — the axioms characterising the Shapley value [6]. Critically, the quantity delivered to the user must be <code>ψ(x)</code> itself, and not a transformation of it that discards information the user is told is present.</p>
+<p><strong>Serving equivalence.</strong> The preprocessing map applied at training time, <code>φ_train</code>, and the one applied at serving time, <code>φ_serve</code>, must be provably identical:</p>
+<pre><code>φ_train(x) = φ_serve(x)    for all x ∈ 𝒳
+</code></pre>
+<p>This is a requirement about the <em>implementation</em>, not about the mathematics. Both maps are code, they were written separately, and nothing in a conventional evaluation compares them. Section 22.4 reports that they differed in five places.</p>
+<p><strong>Evaluation against an attainable ceiling.</strong> Where the label is generated by <code>y = g(x) + ε</code> with <code>ε</code> a known noise process, the Bayes-optimal accuracy</p>
+<pre><code>A* = 𝔼ₓ [ max_k P(y = k | g(x)) ]
+</code></pre>
+<p>is computable, and model accuracy <code>A</code> should be reported as <code>A / A*</code> rather than as <code>A</code> alone.</p>
+<h2 id="63-constraints">6.3 Constraints</h2>
+<p><strong>No real data exists.</strong> No public dataset joins these twenty-six attributes to a behavioural risk label, and Section 5.2 argues that no such label exists even in principle, since risk-band suitability is never observed. The system is therefore trained on synthetic data whose generating function is documented. Every accuracy figure in this report measures recovery of that function.</p>
+<p><strong>The label is irreducibly noisy.</strong> By construction the risk score carries additive Gaussian noise of standard deviation 8.0 against a signal of standard deviation 7.64. Roughly half the variance in the score cannot be explained by any function of the features. Perfect classification is not merely difficult; it is impossible, and the ceiling <code>A*</code> quantifies the impossibility.</p>
+<p><strong>Explanation must be computed per request.</strong> A global feature ranking is inadequate: it describes the model, not the individual. Exact Shapley values must therefore be computed inside the request cycle, which constrains the model family to those for which exact attribution is polynomial — that is, to tree ensembles [7].</p>
+<p><strong>The system must be inspectable.</strong> Every prediction is persisted with its inputs and its attributions, so that any assessment can be reproduced and audited after the fact.</p>
+<h2 id="64-what-success-means">6.4 What Success Means</h2>
+<p>Success is not high accuracy. Given the noise term, high accuracy on this label would indicate leakage rather than skill.</p>
+<p>Success is a model that approaches <code>A*</code>; a serving path that provably computes the same features as the training path; an explanation that a user sees in the form the attribution method produced; and a report that states plainly which of its numbers are properties of the world, which are properties of a generator, and which are neither.</p>
+<p>By that standard the system succeeds on the first two counts, fails on the third — Section 21.4 documents an explanation pipeline that discarded the sign of every attribution before display — and this report is an attempt at the fourth.</p>
+<h2 id="65-explicitly-out-of-scope">6.5 Explicitly Out of Scope</h2>
+<p>Authentication, authorisation and any protection of the stored financial disclosures. Real-time model retraining. Financial advice: the recommendations displayed are produced by fixed rules over the inputs, not by the model, and no claim is made for their soundness. Any assertion that the behavioural biases the system names are biases the user actually exhibits.</p></body></html>

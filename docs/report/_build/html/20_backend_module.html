@@ -1,0 +1,90 @@
+<!doctype html><html><head><meta charset='utf-8'><title>20_backend_module</title><style>
+@page { size: A4; margin: 20mm 18mm 20mm 18mm; }
+@page :first { margin-top: 24mm; }
+html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+body {
+  font-family: "Charter", "Georgia", "Times New Roman", serif;
+  font-size: 10.5pt; line-height: 1.52; color: #14171a; margin: 0;
+  hyphens: auto; text-align: justify;
+}
+h1, h2, h3 { font-family: "Helvetica Neue", Arial, sans-serif; color: #0b0d0f; text-align: left; }
+h1 { font-size: 19pt; line-height: 1.2; margin: 0 0 1.1em; padding-bottom: .35em;
+     border-bottom: 2px solid #14171a; break-after: avoid; }
+h2 { font-size: 13pt; margin: 1.7em 0 .55em; break-after: avoid; }
+h3 { font-size: 11pt; margin: 1.3em 0 .45em; break-after: avoid; }
+p { margin: 0 0 .75em; orphans: 3; widows: 3; }
+strong { font-weight: 600; }
+a { color: #14171a; text-decoration: none; }
+
+/* Tables */
+table { border-collapse: collapse; width: 100%; margin: 1em 0 1.2em;
+        font-size: 9.2pt; break-inside: avoid; font-family: "Helvetica Neue", Arial, sans-serif; }
+thead { background: #f2f4f6; }
+th, td { border: 1px solid #ccd2d8; padding: 5px 8px; text-align: left; vertical-align: top; }
+th { font-weight: 600; }
+tbody tr:nth-child(even) { background: #fafbfc; }
+
+/* Code */
+code { font-family: "SF Mono", "Menlo", monospace; font-size: 8.8pt;
+       background: #f4f6f8; padding: 1px 4px; border-radius: 3px; }
+pre { background: #f7f9fa; border: 1px solid #e2e7ec; border-left: 3px solid #8b98a5;
+      padding: 9px 12px; border-radius: 3px; overflow-x: auto; break-inside: avoid;
+      font-size: 8.6pt; line-height: 1.42; text-align: left; }
+pre code { background: none; padding: 0; font-size: inherit; }
+
+/* Figure / screenshot callouts */
+blockquote { margin: .9em 0; padding: .6em .9em; background: #fffdf3;
+             border-left: 3px solid #d9b23a; font-size: 9.4pt; break-inside: avoid;
+             font-family: "Helvetica Neue", Arial, sans-serif; text-align: left; }
+blockquote p { margin: 0 0 .35em; }
+blockquote p:last-child { margin-bottom: 0; }
+
+/* Rendered mermaid diagrams */
+figure.diagram { margin: 1.2em 0; text-align: center; break-inside: avoid; page-break-inside: avoid; }
+figure.diagram svg { max-width: 100%; height: auto; }
+figure.diagram figcaption { font-size: 8.6pt; color: #5b6770; margin-top: .5em;
+                            font-family: "Helvetica Neue", Arial, sans-serif; }
+
+hr { border: none; border-top: 1px solid #dde2e7; margin: 1.6em 0; }
+ul, ol { margin: 0 0 .8em; padding-left: 1.4em; }
+li { margin-bottom: .22em; }
+.section-break { break-before: page; }
+</style></head><body><h1 id="20-backend-module">20. Backend Module</h1>
+<h2 id="201-framework-and-rationale">20.1 Framework and Rationale</h2>
+<p>The service is written with FastAPI. Two properties motivated the choice over the alternatives considered.</p>
+<p>The first is that validation and documentation derive from the same declaration. A Pydantic model annotated with <code>Literal["Low", "Middle", "High"]</code> both rejects a non-conforming request at runtime and appears in the OpenAPI schema as an enumeration. There is no second artefact to keep synchronised, and the interactive documentation at <code>/docs</code> cannot describe behaviour the service does not enforce.</p>
+<p>The second is that the machine learning module is Python. A Java or Node service would have had to reach the model across a process boundary — through a Python sidecar, or by exporting the Random Forest to ONNX or PMML — and each of those introduces a serialisation format that must agree with the training pipeline about feature ordering and dtype. Given that the preceding sections document five defects arising from exactly this class of disagreement between two representations of the same computation, adding a third representation would have been unwise. FastAPI imports <code>inference.predict</code> and calls it as a function.</p>
+<h2 id="202-layering">20.2 Layering</h2>
+<p>Four layers, enforced by convention rather than by tooling.</p>
+<p><strong>Routers</strong> (<code>app/routers/</code>) parse the request and shape the response. They contain no SQL and no arithmetic. Each router is registered in <code>main.py</code> with a tag, which is what groups the endpoints in the generated documentation.</p>
+<p><strong>Schemas</strong> (<code>app/schemas/assessment.py</code>) declare the request and response contracts. All validation lives here and nowhere else; a router never inspects a field value.</p>
+<p><strong>Services</strong> (<code>app/services/</code>) hold the logic. <code>assessment_service</code> is the only module that issues database queries, exposing named operations such as <code>create_assessment</code>, <code>save_prediction</code>, <code>mark_assessment_failed</code> and <code>get_analytics</code>. <code>ml_service</code> is a singleton that wraps the inference module and exposes <code>predict</code> and an <code>is_loaded</code> property.</p>
+<p><strong>Models</strong> (<code>app/models/db_models.py</code>) declare the five SQLAlchemy entities described in Section 17.</p>
+<p>The rule that routers may not touch the session is the one that pays for itself. <code>POST /assessment</code> needs to create a row, call the model, persist a prediction and three scores, and mark the assessment complete or failed depending on the outcome. Expressing that as four named service calls keeps the router readable and keeps the transaction boundary in one place.</p>
+<h2 id="203-model-loading">20.3 Model Loading</h2>
+<p><code>ml_service</code> imports <code>inference.predict</code> once, at module import, which occurs during application startup. The import is wrapped in a broad <code>try</code>/<code>except</code> that records the failure rather than propagating it, so a service whose model is missing still starts, still answers <code>/health</code>, and reports <code>model_loaded: false</code>. Requests to <code>/predict</code> then raise <code>RuntimeError</code>, which the router converts to HTTP 503.</p>
+<p>Degrading rather than refusing to boot is deliberate. A container that exits on a missing bind mount produces a restart loop and an opaque failure; a container that starts and reports its own unhealthiness is diagnosable from <code>/health</code>.</p>
+<p>The module locates the inference package through <code>ML_PATH</code>, defaulting to <code>/ml</code>, which is where <code>docker-compose.yml</code> mounts the <code>ml/</code> directory. A fallback path is computed when that directory is absent, and that fallback is wrong: it ascends four directory levels from <code>app/services/</code> and lands on the repository's parent rather than its root. The resulting path does not exist. The defect is masked under Docker Compose, where <code>/ml</code> is always present, and surfaces only when the service is run directly from a shell without <code>ML_PATH</code> set, in which case every prediction returns 503. Section 16.7 records it.</p>
+<h2 id="204-the-prediction-path">20.4 The Prediction Path</h2>
+<p><code>POST /assessment</code> proceeds as follows. The body is validated against <code>AssessmentInput</code>. <code>assessment_service.create_assessment</code> writes a row with <code>status = "pending"</code> and commits, so that the attempt is durable before the model is invoked. <code>ml_service.predict</code> is called with the validated dictionary. On success, <code>save_prediction</code> writes one <code>predictions</code> row and three <code>behavioral_scores</code> rows and commits them together, and the assessment is marked <code>completed</code>. On any exception the assessment is marked <code>failed</code> and HTTP 500 is returned.</p>
+<p>Committing the assessment row before the prediction is what makes the <code>failed</code> status meaningful. Had both been written in one transaction, a failed prediction would roll back the assessment and leave no record that the attempt occurred.</p>
+<p><code>POST /predict</code> performs the same validation and the same model call, and writes nothing.</p>
+<h2 id="205-persistence">20.5 Persistence</h2>
+<p>SQLAlchemy 2.0 declarative mapping backs five tables. Sessions are supplied to routers through a <code>get_db</code> dependency that yields a session and closes it in a <code>finally</code> block, so a session is released whether or not the handler raised.</p>
+<p>The engine is constructed from <code>DATABASE_URL</code>. When that string names SQLite the engine receives <code>check_same_thread: False</code>, and a connection event handler issues <code>PRAGMA journal_mode=WAL</code> to permit concurrent readers alongside a writer. Neither adjustment applies to PostgreSQL.</p>
+<p>Dialect divergence is handled in exactly one place. The daily-count aggregation in <code>get_analytics</code> inspects <code>db.bind.dialect.name</code> and emits <code>strftime</code> or <code>to_char</code> accordingly, because no portable spelling of date truncation exists across the two backends.</p>
+<h2 id="206-middleware-and-logging">20.6 Middleware and Logging</h2>
+<p>A single middleware wraps every request. It records method, path, status and elapsed milliseconds to the application log, then attempts to write an <code>audit_logs</code> row.</p>
+<p>Two characteristics of this middleware deserve to be stated plainly rather than glossed.</p>
+<p>It is described in its own comment as a "non-blocking best-effort" write. It is best-effort — the write is wrapped in a bare <code>except</code> so that a logging failure cannot fail the request. It is not non-blocking. <code>dispatch</code> is a coroutine, and it opens a synchronous SQLAlchemy session and commits without awaiting, which occupies the event loop for the duration of the write. Under concurrency this serialises requests behind the audit table.</p>
+<p>It persists the full request body. For <code>POST /assessment</code> that body is a complete financial disclosure: income, expenses, debt, credit score. These are written to a table that no endpoint exposes and no policy protects, in a system with no authentication. On synthetic inputs this is harmless. Section 26 treats it as a limitation rather than a feature.</p>
+<h2 id="207-security-posture">20.7 Security Posture</h2>
+<p>There is none, and the report should not pretend otherwise.</p>
+<p><code>SECRET_KEY</code> is declared in the settings model and consumed by no code path. No authentication middleware exists, no route carries a dependency that inspects a credential, and the <code>users</code> table is never written. <code>GET /assessments</code> returns every stored assessment to any caller without pagination limits beyond a <code>limit</code> parameter capped at 100. CORS is restricted to two localhost origins, which is the only access control present, and it constrains browsers rather than clients.</p>
+<p>This was a scoping decision rather than an oversight — authentication was outside the objectives listed in Section 7 — but its consequences are load-bearing for how the system may be used. The application is a demonstration operating on synthetic data. It is not deployable against real financial disclosures without an authentication layer, an authorisation model for the history and analytics endpoints, and a policy governing what the audit log retains.</p>
+<hr />
+<blockquote>
+<p><strong>Figure 20.1</strong> — <em>Backend package structure,</em> as a layered block diagram: routers → schemas → services → models, with <code>ml_service</code> shown calling out to the mounted <code>ml/</code> directory and <code>assessment_service</code> calling the database. Place in Section 20.2.</p>
+<p><strong>Screenshot 20.1</strong> — <em>Backend startup log,</em> showing <code>Database initialized.</code> followed by <code>ML models loaded and ready.</code> This is the evidence that the bind mount resolved and the artefacts deserialised. Place in Section 20.3.</p>
+<p><strong>Figure 20.2</strong> — <em>State transitions of <code>Assessment.status</code>:</em> pending → completed, and pending → failed. A two-transition diagram. Place in Section 20.4 to support the argument about the early commit.</p>
+</blockquote></body></html>

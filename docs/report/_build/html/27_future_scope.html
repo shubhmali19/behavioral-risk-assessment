@@ -1,0 +1,87 @@
+<!doctype html><html><head><meta charset='utf-8'><title>27_future_scope</title><style>
+@page { size: A4; margin: 20mm 18mm 20mm 18mm; }
+@page :first { margin-top: 24mm; }
+html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+body {
+  font-family: "Charter", "Georgia", "Times New Roman", serif;
+  font-size: 10.5pt; line-height: 1.52; color: #14171a; margin: 0;
+  hyphens: auto; text-align: justify;
+}
+h1, h2, h3 { font-family: "Helvetica Neue", Arial, sans-serif; color: #0b0d0f; text-align: left; }
+h1 { font-size: 19pt; line-height: 1.2; margin: 0 0 1.1em; padding-bottom: .35em;
+     border-bottom: 2px solid #14171a; break-after: avoid; }
+h2 { font-size: 13pt; margin: 1.7em 0 .55em; break-after: avoid; }
+h3 { font-size: 11pt; margin: 1.3em 0 .45em; break-after: avoid; }
+p { margin: 0 0 .75em; orphans: 3; widows: 3; }
+strong { font-weight: 600; }
+a { color: #14171a; text-decoration: none; }
+
+/* Tables */
+table { border-collapse: collapse; width: 100%; margin: 1em 0 1.2em;
+        font-size: 9.2pt; break-inside: avoid; font-family: "Helvetica Neue", Arial, sans-serif; }
+thead { background: #f2f4f6; }
+th, td { border: 1px solid #ccd2d8; padding: 5px 8px; text-align: left; vertical-align: top; }
+th { font-weight: 600; }
+tbody tr:nth-child(even) { background: #fafbfc; }
+
+/* Code */
+code { font-family: "SF Mono", "Menlo", monospace; font-size: 8.8pt;
+       background: #f4f6f8; padding: 1px 4px; border-radius: 3px; }
+pre { background: #f7f9fa; border: 1px solid #e2e7ec; border-left: 3px solid #8b98a5;
+      padding: 9px 12px; border-radius: 3px; overflow-x: auto; break-inside: avoid;
+      font-size: 8.6pt; line-height: 1.42; text-align: left; }
+pre code { background: none; padding: 0; font-size: inherit; }
+
+/* Figure / screenshot callouts */
+blockquote { margin: .9em 0; padding: .6em .9em; background: #fffdf3;
+             border-left: 3px solid #d9b23a; font-size: 9.4pt; break-inside: avoid;
+             font-family: "Helvetica Neue", Arial, sans-serif; text-align: left; }
+blockquote p { margin: 0 0 .35em; }
+blockquote p:last-child { margin-bottom: 0; }
+
+/* Rendered mermaid diagrams */
+figure.diagram { margin: 1.2em 0; text-align: center; break-inside: avoid; page-break-inside: avoid; }
+figure.diagram svg { max-width: 100%; height: auto; }
+figure.diagram figcaption { font-size: 8.6pt; color: #5b6770; margin-top: .5em;
+                            font-family: "Helvetica Neue", Arial, sans-serif; }
+
+hr { border: none; border-top: 1px solid #dde2e7; margin: 1.6em 0; }
+ul, ol { margin: 0 0 .8em; padding-left: 1.4em; }
+li { margin-bottom: .22em; }
+.section-break { break-before: page; }
+</style></head><body><h1 id="27-future-scope">27. Future Scope</h1>
+<p>The items below are ordered by the ratio of value delivered to effort required, not by ambition. The first four are corrections to defects this report documents, and none takes more than an afternoon.</p>
+<h2 id="271-immediate-corrections">27.1 Immediate Corrections</h2>
+<p><strong>Restore the sign of the SHAP attributions.</strong> Two lines in <code>_get_shap_values</code>. Instead of averaging absolute values across classes, select the column of the predicted class and preserve its sign:</p>
+<pre><code class="language-python">k = int(model.predict(X_df)[0])
+sv_row = sv[0][:, k]
+</code></pre>
+<p>The interface is already written to render negative values in red. This is the first thing that should be done, because it is the difference between an explainability module and a bar chart of magnitudes, and because the current caption misinforms. Every SHAP figure in Sections 14, 21 and 22 must then be regenerated.</p>
+<p><strong>Promote the equivalence check to a regression test.</strong> The comparison described in Section 9.7 — routing training records through the serving preprocessor and asserting the feature vectors match — runs in under a minute and would have caught five of this project's six defects on the day they were introduced. It belongs in <code>tests/</code>, running in continuous integration, and it is the single highest-value change available to this codebase.</p>
+<p><strong>Remove <code>expense_ratio</code>.</strong> It is the exact complement of <code>savings_ratio</code> (correlation −1.000000) and contributes nothing but a split of the SHAP attribution across two identical rows. Removing it leaves accuracy unchanged and makes the explanation honest.</p>
+<p><strong>Fix the two backend path defects.</strong> <code>GET /model/info</code> should resolve its metadata path relative to <code>ML_PATH</code> rather than to an absolute location on the author's machine. The local-development fallback in <code>ml_service</code> should ascend three directory levels rather than four.</p>
+<h2 id="272-making-the-model-fit-its-purpose">27.2 Making the Model Fit Its Purpose</h2>
+<p><strong>Threshold on <code>P(High)</code> instead of taking the argmax.</strong> Macro AUC (0.7712) exceeds weighted AUC (0.7461), which establishes that the model ranks high-risk individuals well even though the argmax rule selects that class for fewer than half of them. Recall on <em>High</em> is 0.4295 against precision 0.6898. Choosing a threshold to hit a target recall — say 0.75 — would trade precision the application can afford for recall it cannot. The probability vector is already in the API response; only the decision rule needs changing.</p>
+<p><strong>Assess calibration.</strong> The interface displays a confidence figure. Whether a stated 0.7 corresponds to being right 70% of the time is unmeasured. A reliability diagram over the test partition, and Platt scaling or isotonic regression if the model proves miscalibrated, would make the displayed number mean what it appears to mean.</p>
+<p><strong>Fit a logistic-regression baseline.</strong> The generating function is a weighted sum, so a linear model may perform comparably to the ensemble. Without that comparison the report cannot claim the non-linear models earned their complexity, and Section 26.10 concedes as much. The baseline may well win, and that would be a finding.</p>
+<h2 id="273-repairing-the-data">27.3 Repairing the Data</h2>
+<p><strong>Preserve the <code>None</code> insurance category.</strong> Read the CSV with <code>keep_default_na=False</code> and restore the three-level ordinal map. Accuracy shifts by less than one cross-validation standard deviation, but <code>behavioral_composite_score</code> becomes correct for the third of records currently misattributed, and the live API stops mapping a user who reports no insurance onto the training median.</p>
+<p><strong>Rewrite the <code>investment_preference</code> generator.</strong> As Section 22.3 establishes, the label is currently sampled from a distribution conditioned on <code>risk_category</code> alone, giving it a Bayes ceiling of 0.3675 and making the secondary model unsalvageable. Making the draw depend on age, investment experience, luxury spending and risk band would give the target learnable structure. Every downstream number changes, so this belongs in a new iteration rather than a patch.</p>
+<p><strong>Reconsider the IQR clip on <code>credit_score</code>.</strong> The rule truncates at 660.5, discarding variation among poor-credit individuals precisely where the feature discriminates. This is why a variable carrying weight +25 in the generating function ranks eighth in SHAP. A wider bound, or clipping only the upper tail, would recover it.</p>
+<p><strong>Widen the label's signal-to-noise ratio, or say why not.</strong> The noise term at σ = 8.0 against a signal at σ = 7.64 caps achievable accuracy at 0.6104. This was almost certainly not deliberate. A generator with less noise would produce a more discriminative model, at the cost of a less interesting Bayes-ceiling analysis.</p>
+<h2 id="274-toward-real-data">27.4 Toward Real Data</h2>
+<p>The largest limitation, and the hardest to address. Sections 5.2 and 26.1 argue that no ground truth for risk-band suitability exists even in principle, because no institution records years afterward whether an assigned band was correct.</p>
+<p>Two tractable directions exist. A <strong>small validation study</strong> — 100 to 200 respondents completing both the form and the validated Grable–Lytton instrument [3] — would not provide a training label, but would show whether the system's bands correlate with an instrument the literature accepts. That is a modest, checkable claim, and it requires ethics approval and time rather than novel methodology.</p>
+<p>A <strong>proxy-label study</strong> would substitute an observable outcome for the unobservable one: portfolio volatility actually held, or realised drawdown tolerance during a market decline. This changes the research question from <em>what band suits this person</em> to <em>what behaviour does this person exhibit</em>, which is answerable. It is the direction in which this work would have to move to make any empirical claim at all.</p>
+<p>Until one of these is done, the behavioural-economics premise stated in Section 13.6 — that lifestyle spending reveals dispositions self-report conceals — remains untested, because the synthetic label was constructed without reference to any lifestyle attribute.</p>
+<h2 id="275-engineering-the-system">27.5 Engineering the System</h2>
+<p><strong>Authentication and authorisation.</strong> No principal exists, the <code>users</code> table is never written, and <code>GET /assessments</code> returns every stored financial disclosure to any caller. Session-based authentication would populate the vestigial table and permit the history and analytics endpoints to be scoped to their owner.</p>
+<p><strong>Audit-log policy.</strong> The middleware persists complete request bodies to an unprotected table and does so with a synchronous commit inside an asynchronous handler. The write should move to a background task, and the body should be redacted or omitted.</p>
+<p><strong>Schema migrations.</strong> <code>backend/alembic/</code> is empty and the schema is materialised by <code>metadata.create_all()</code>, which silently ignores drifted column definitions. Generating an initial revision is a prerequisite to any change against a database holding data.</p>
+<p><strong>Indexes.</strong> No secondary index exists. The history listing orders <code>assessments</code> by <code>created_at</code>, and the analytics aggregations group <code>predictions</code> by <code>risk_category</code> and <code>investment_preference</code>. Those three columns are where load will first show.</p>
+<p><strong>Reuse the <code>TreeExplainer</code>.</strong> It is constructed per request against a 200-tree ensemble. Building it once at startup would remove the dominant cost of a prediction. No latency benchmark exists to quantify the gain, and establishing one is a precondition for claiming it.</p>
+<p><strong>Code-split the frontend.</strong> The bundle is 922.99 kB, 279.68 kB gzipped, dominated by Recharts and its D3 dependencies. Deferring the analytics and results routes behind <code>React.lazy</code> would bring the initial chunk under Vite's 500 kB threshold.</p>
+<h2 id="276-beyond-the-present-design">27.6 Beyond the Present Design</h2>
+<p>Interaction effects are computable for tree models at the same polynomial cost as the attributions themselves [7], and the interface presents none. Showing that a low emergency fund matters more for a user with dependants would demonstrate the capability that justifies replacing an additive rubric — the capability Section 25.3 claims and Section 5.2 concedes the synthetic label barely exercises.</p>
+<p>Counterfactual explanation — <em>if your savings rate were 22% rather than 12%, your band would change</em> — is a more useful artefact for an individual than an attribution, and is what a user actually wants from a risk assessment.</p>
+<p>And the incumbent deserves a fair test. Rudin's position is that a high-stakes decision should use an inherently interpretable model rather than an explained black box [15]. A scored rubric fitted to this data, rather than asserted, would be interpretable by construction and might lose very little accuracy against a label that is a weighted sum. Section 4.5 concedes that on transparency the rubric currently leads. Benchmarking against it would settle whether anything was gained.</p></body></html>

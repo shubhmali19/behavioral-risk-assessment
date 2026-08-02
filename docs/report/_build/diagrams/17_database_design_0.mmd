@@ -1,0 +1,80 @@
+erDiagram
+    USERS ||--o{ ASSESSMENTS : "submits"
+    ASSESSMENTS ||--|| PREDICTIONS : "yields"
+    ASSESSMENTS ||--o{ BEHAVIORAL_SCORES : "decomposes into"
+
+    USERS {
+        string id PK "UUID"
+        string session_id UK "not null"
+        datetime created_at
+        string ip_address "nullable"
+    }
+
+    ASSESSMENTS {
+        string id PK "UUID"
+        string user_id FK "nullable"
+        int age
+        string gender
+        string education
+        string occupation
+        string income_level
+        string marital_status
+        int dependents
+        string location
+        string employment_type
+        int years_of_experience
+        float monthly_income
+        float monthly_expenses
+        float savings_rate
+        float emergency_fund_months
+        float total_debt
+        float loan_amount
+        int credit_score
+        float investment_experience_years
+        string investment_frequency
+        string insurance_coverage
+        string shopping_frequency
+        float online_spending_pct
+        float luxury_spending_pct
+        int subscription_count
+        float gaming_expenses_monthly
+        float travel_expenses_annual
+        datetime created_at
+        string status "pending|completed|failed"
+    }
+
+    PREDICTIONS {
+        string id PK "UUID"
+        string assessment_id FK "not null, UNIQUE"
+        string risk_category
+        float risk_confidence
+        json risk_probabilities
+        string investment_preference
+        float investment_confidence
+        float financial_decision_score
+        float behavioral_composite_score
+        float financial_discipline_score
+        json shap_values
+        json feature_importance
+        json recommendations
+        json behavioral_biases
+        datetime created_at
+    }
+
+    BEHAVIORAL_SCORES {
+        string id PK "UUID"
+        string assessment_id FK "not null"
+        string score_type
+        float score_value
+        datetime created_at
+    }
+
+    AUDIT_LOGS {
+        string id PK "UUID"
+        string endpoint
+        string method
+        json request_body "nullable"
+        int response_status
+        float duration_ms
+        datetime created_at
+    }

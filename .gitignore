@@ -1,0 +1,35 @@
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+venv/
+.venv/
+env/
+*.db
+*.db-shm
+*.db-wal
+
+# --- Environment / secrets ---
+.env
+.env.local
+.env.*.local
+
+# --- Node / frontend ---
+node_modules/
+frontend/dist/
+frontend/dist-ssr/
+*.log
+npm-debug.log*
+
+# --- ML artifacts ---
+catboost_info/
+data/raw/dataset.csv
+data/processed/processed_dataset.csv
+
+# --- IDE / OS ---
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+*.swp

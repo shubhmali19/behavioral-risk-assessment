@@ -1,0 +1,118 @@
+<!doctype html><html><head><meta charset='utf-8'><title>19_frontend_module</title><style>
+@page { size: A4; margin: 20mm 18mm 20mm 18mm; }
+@page :first { margin-top: 24mm; }
+html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+body {
+  font-family: "Charter", "Georgia", "Times New Roman", serif;
+  font-size: 10.5pt; line-height: 1.52; color: #14171a; margin: 0;
+  hyphens: auto; text-align: justify;
+}
+h1, h2, h3 { font-family: "Helvetica Neue", Arial, sans-serif; color: #0b0d0f; text-align: left; }
+h1 { font-size: 19pt; line-height: 1.2; margin: 0 0 1.1em; padding-bottom: .35em;
+     border-bottom: 2px solid #14171a; break-after: avoid; }
+h2 { font-size: 13pt; margin: 1.7em 0 .55em; break-after: avoid; }
+h3 { font-size: 11pt; margin: 1.3em 0 .45em; break-after: avoid; }
+p { margin: 0 0 .75em; orphans: 3; widows: 3; }
+strong { font-weight: 600; }
+a { color: #14171a; text-decoration: none; }
+
+/* Tables */
+table { border-collapse: collapse; width: 100%; margin: 1em 0 1.2em;
+        font-size: 9.2pt; break-inside: avoid; font-family: "Helvetica Neue", Arial, sans-serif; }
+thead { background: #f2f4f6; }
+th, td { border: 1px solid #ccd2d8; padding: 5px 8px; text-align: left; vertical-align: top; }
+th { font-weight: 600; }
+tbody tr:nth-child(even) { background: #fafbfc; }
+
+/* Code */
+code { font-family: "SF Mono", "Menlo", monospace; font-size: 8.8pt;
+       background: #f4f6f8; padding: 1px 4px; border-radius: 3px; }
+pre { background: #f7f9fa; border: 1px solid #e2e7ec; border-left: 3px solid #8b98a5;
+      padding: 9px 12px; border-radius: 3px; overflow-x: auto; break-inside: avoid;
+      font-size: 8.6pt; line-height: 1.42; text-align: left; }
+pre code { background: none; padding: 0; font-size: inherit; }
+
+/* Figure / screenshot callouts */
+blockquote { margin: .9em 0; padding: .6em .9em; background: #fffdf3;
+             border-left: 3px solid #d9b23a; font-size: 9.4pt; break-inside: avoid;
+             font-family: "Helvetica Neue", Arial, sans-serif; text-align: left; }
+blockquote p { margin: 0 0 .35em; }
+blockquote p:last-child { margin-bottom: 0; }
+
+/* Rendered mermaid diagrams */
+figure.diagram { margin: 1.2em 0; text-align: center; break-inside: avoid; page-break-inside: avoid; }
+figure.diagram svg { max-width: 100%; height: auto; }
+figure.diagram figcaption { font-size: 8.6pt; color: #5b6770; margin-top: .5em;
+                            font-family: "Helvetica Neue", Arial, sans-serif; }
+
+hr { border: none; border-top: 1px solid #dde2e7; margin: 1.6em 0; }
+ul, ol { margin: 0 0 .8em; padding-left: 1.4em; }
+li { margin-bottom: .22em; }
+.section-break { break-before: page; }
+</style></head><body><h1 id="19-frontend-module">19. Frontend Module</h1>
+<h2 id="191-composition">19.1 Composition</h2>
+<p>The client is a single-page React 19 application written in TypeScript and bundled by Vite. Styling uses TailwindCSS with a small set of components built over Radix UI primitives — select, progress, label, separator, dialog, tooltip — which supply keyboard handling and ARIA semantics that a hand-rolled dropdown would not. Charts are drawn with Recharts. Forms are managed by React Hook Form and validated by Zod. Routing uses React Router.</p>
+<p>Five routes are declared in <code>App.tsx</code>:</p>
+<table>
+<thead>
+<tr>
+<th>Path</th>
+<th>View</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>/</code></td>
+<td>Landing</td>
+</tr>
+<tr>
+<td><code>/assessment</code></td>
+<td>Four-step input form</td>
+</tr>
+<tr>
+<td><code>/results/:id</code></td>
+<td>Prediction breakdown</td>
+</tr>
+<tr>
+<td><code>/history</code></td>
+<td>Past assessments</td>
+</tr>
+<tr>
+<td><code>/analytics</code></td>
+<td>Aggregate dashboard</td>
+</tr>
+</tbody>
+</table>
+<h2 id="192-separation-from-business-logic">19.2 Separation from Business Logic</h2>
+<p>The frontend computes nothing. It holds no thresholds, no scoring weights, no risk bands and no model. Every number it renders arrives from the service, and its only substantive responsibility beyond presentation is input validation.</p>
+<p>That validation duplicates the backend's, deliberately. The Zod schema in <code>Assessment.tsx</code> enumerates the same literal values as the Pydantic <code>Literal</code> types, so a user selecting an invalid option is told immediately rather than after a round trip. The duplication is a usability affordance, not a source of truth; the backend rejects independently, and a divergence between the two is a defect in the frontend rather than a relaxation of the rule.</p>
+<p>The two did diverge. An earlier build of the form presented <code>occupation</code> and <code>location</code> as free-text inputs, and offered dropdown options — <code>Bachelor's</code>, <code>Master's</code>, <code>Upper-Middle</code>, <code>Full-time</code>, <code>Daily</code> for investment frequency, <code>Health Only</code> for insurance — that appear nowhere in the training vocabulary. Every submission carrying one of these was rejected with HTTP 422. The fields are now <code>Select</code> components restricted to the ten permitted literal sets given in Section 13.3, and the Zod schema uses <code>z.enum</code> rather than <code>z.string</code>, so an invalid value cannot survive the type checker.</p>
+<h2 id="193-type-safety-against-the-contract">19.3 Type Safety Against the Contract</h2>
+<p>All request and response shapes are declared in <code>src/types/index.ts</code>, and every call passes through <code>src/api/assessments.ts</code>. No page component constructs a URL or touches Axios. This confines the effect of an interface change to two files, and <code>npm run build</code> runs <code>tsc -b</code> before Vite, so a type that no longer matches its usage fails the build rather than the runtime.</p>
+<p>The API layer also absorbs the envelope inconsistency described in Section 18.3. <code>postPredict</code> returns <code>response.data.data</code>; <code>getAnalytics</code> returns <code>response.data</code>. Components receive the inner payload in both cases and are unaware that the two endpoints disagree about shape.</p>
+<h2 id="194-views">19.4 Views</h2>
+<p><strong>Landing</strong> presents the system and routes to the assessment.</p>
+<p><strong>Assessment</strong> is a four-step wizard over the twenty-six inputs, grouped as demographics, financial profile, lifestyle and review. Each step is validated with <code>trigger()</code> on its own field subset before the user may advance, so errors surface on the step that produced them rather than at submission.</p>
+<p><strong>Results</strong> renders the prediction. A Recharts <code>RadialBarChart</code> displays the confidence of the predicted class, coloured green, amber or red by risk band. A horizontal bar chart shows the ten SHAP attributions. The component colours each bar blue for a positive value and red for a negative one, and captions the chart accordingly, but no bar is ever red: the service returns absolute magnitudes, as Section 21.4 explains. The legend describes a distinction the data does not carry. Three numeric cards show the decision, behavioural composite and discipline scores. Detected behavioural biases appear as badges, and the rule-generated recommendations as an ordered list.</p>
+<p><strong>History</strong> lists past assessments, each row linking to its results.</p>
+<p><strong>Analytics</strong> fetches <code>/analytics</code> and draws the risk and investment distributions as pie charts, the mean scores as a bar chart, and the per-day assessment count as a line chart.</p>
+<p>Dark mode is provided by a <code>ThemeContext</code> that reads the system preference on first load and persists an override to <code>localStorage</code>.</p>
+<h2 id="195-persistence-of-submitted-assessments">19.5 Persistence of Submitted Assessments</h2>
+<p>The form submits to <code>POST /assessment</code>, receives an <code>assessment_id</code>, caches the payload in <code>sessionStorage</code> under that identifier for an immediate render, and navigates to <code>/results/{id}</code>. If a later visit to that route finds no cached entry — a reloaded tab, a shared link, a different browser — the page refetches through <code>GET /assessment/{id}</code>.</p>
+<p>This was not the original behaviour, and the correction is worth recording because the failure was invisible to every test in the suite.</p>
+<p>The form previously called <code>postPredict</code>, the endpoint that computes a prediction and deliberately does not store it. <code>postAssessment</code> existed in <code>src/api/assessments.ts</code>, was correctly typed, and was called from nowhere. The page synthesised an identifier from <code>Date.now()</code> and used it as though it were a database key.</p>
+<p>Four consequences followed, each of which would have presented as an unrelated bug. Nothing a user entered through the interface reached the database, so the <code>assessments</code>, <code>predictions</code> and <code>behavioral_scores</code> tables held only rows created by direct <code>curl</code> calls during testing. The history view queried the database, found nothing the user had submitted, and silently fell back to a <code>localStorage</code> list populated by an explicit "Save to History" button — so the history a user saw was a browser artefact rather than a record. The results route worked only from <code>sessionStorage</code>; a reload passed a millisecond timestamp to <code>GET /assessment/{id}</code> and received HTTP 404, which meant results were neither shareable nor durable. And the analytics dashboard aggregated a table the interface never wrote to.</p>
+<p>The defect survived because the backend was correct. Its integration tests exercised <code>POST /assessment</code> directly and passed. The frontend compiled, and TypeScript had no opinion about which of two correctly-typed functions the page chose to call. Nothing in the system compared the endpoint the interface used against the endpoint the objectives required, because no test spanned both.</p>
+<p>The repair changed two lines: the import, and the call site. Verification exercised the corrected path end to end against a fresh database. Submitting an assessment returned the UUID <code>5d0b172f-…</code>; <code>GET /assessment/{id}</code> resolved it; <code>GET /assessments</code> reported a total of one and listed that identifier; <code>GET /analytics</code> counted it. Inspecting the store afterwards showed one <code>assessments</code> row with <code>status = "completed"</code>, one <code>predictions</code> row carrying its SHAP attributions, and three <code>behavioral_scores</code> rows for the composite, discipline and decision scores. The <code>users</code> table remained empty, as expected in a system without authentication.</p>
+<p>The end-to-end flow stated in the objectives of Section 7 — a user submits, the model predicts, the prediction is stored, the dashboard renders the history — is exercised by the running application.</p>
+<h2 id="196-build-and-serving">19.6 Build and Serving</h2>
+<p><code>npm run build</code> type-checks with <code>tsc -b</code> and then bundles with Vite. The production bundle is 922.99 kB of JavaScript, 279.68 kB after gzip, alongside 20.79 kB of CSS. The JavaScript chunk exceeds Vite's default 500 kB warning threshold, and the bulk of it is Recharts together with the D3 modules it depends on. Splitting the analytics and results routes behind <code>React.lazy</code> would bring the initial chunk under the threshold; this has not been done.</p>
+<p>In deployment the assets are served by nginx from a multi-stage image, with <code>try_files $uri $uri/ /index.html</code> so that a reload on <code>/results/123</code> returns the application rather than a 404, and an <code>/api/</code> proxy to the backend service.</p>
+<hr />
+<blockquote>
+<p><strong>Screenshot 19.1</strong> — <em>Landing page,</em> light and dark mode side by side, demonstrating the theme toggle described in Section 19.4.</p>
+<p><strong>Screenshot 19.2</strong> — <em>Results page,</em> full view showing the radial confidence gauge, the three score cards, the SHAP bar chart with both positive and negative attributions visible, and the recommendations list. This is the single most important screenshot in the report. Place at the start of Section 19.4.</p>
+<p><strong>Screenshot 19.3</strong> — <em>Analytics dashboard.</em> Submit several assessments through the form before capturing, so the distributions and the per-day line chart contain more than a single point.</p>
+<p><strong>Screenshot 19.4</strong> — <em>Assessment form on a mobile viewport (375 px),</em> demonstrating the responsive layout. Place in Section 19.4.</p>
+<p><strong>Figure 19.1</strong> — <em>Component and data-flow diagram of the frontend:</em> <code>App</code> → route components → <code>api/assessments.ts</code> → Axios client → backend. Show <code>Assessment</code> calling <code>postAssessment</code> and <code>Results</code> falling back to <code>getAssessment</code> when the <code>sessionStorage</code> cache misses, since that pair is the subject of Section 19.5.</p>
+</blockquote></body></html>

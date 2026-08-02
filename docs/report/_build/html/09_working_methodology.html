@@ -1,0 +1,111 @@
+<!doctype html><html><head><meta charset='utf-8'><title>09_working_methodology</title><style>
+@page { size: A4; margin: 20mm 18mm 20mm 18mm; }
+@page :first { margin-top: 24mm; }
+html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+body {
+  font-family: "Charter", "Georgia", "Times New Roman", serif;
+  font-size: 10.5pt; line-height: 1.52; color: #14171a; margin: 0;
+  hyphens: auto; text-align: justify;
+}
+h1, h2, h3 { font-family: "Helvetica Neue", Arial, sans-serif; color: #0b0d0f; text-align: left; }
+h1 { font-size: 19pt; line-height: 1.2; margin: 0 0 1.1em; padding-bottom: .35em;
+     border-bottom: 2px solid #14171a; break-after: avoid; }
+h2 { font-size: 13pt; margin: 1.7em 0 .55em; break-after: avoid; }
+h3 { font-size: 11pt; margin: 1.3em 0 .45em; break-after: avoid; }
+p { margin: 0 0 .75em; orphans: 3; widows: 3; }
+strong { font-weight: 600; }
+a { color: #14171a; text-decoration: none; }
+
+/* Tables */
+table { border-collapse: collapse; width: 100%; margin: 1em 0 1.2em;
+        font-size: 9.2pt; break-inside: avoid; font-family: "Helvetica Neue", Arial, sans-serif; }
+thead { background: #f2f4f6; }
+th, td { border: 1px solid #ccd2d8; padding: 5px 8px; text-align: left; vertical-align: top; }
+th { font-weight: 600; }
+tbody tr:nth-child(even) { background: #fafbfc; }
+
+/* Code */
+code { font-family: "SF Mono", "Menlo", monospace; font-size: 8.8pt;
+       background: #f4f6f8; padding: 1px 4px; border-radius: 3px; }
+pre { background: #f7f9fa; border: 1px solid #e2e7ec; border-left: 3px solid #8b98a5;
+      padding: 9px 12px; border-radius: 3px; overflow-x: auto; break-inside: avoid;
+      font-size: 8.6pt; line-height: 1.42; text-align: left; }
+pre code { background: none; padding: 0; font-size: inherit; }
+
+/* Figure / screenshot callouts */
+blockquote { margin: .9em 0; padding: .6em .9em; background: #fffdf3;
+             border-left: 3px solid #d9b23a; font-size: 9.4pt; break-inside: avoid;
+             font-family: "Helvetica Neue", Arial, sans-serif; text-align: left; }
+blockquote p { margin: 0 0 .35em; }
+blockquote p:last-child { margin-bottom: 0; }
+
+/* Rendered mermaid diagrams */
+figure.diagram { margin: 1.2em 0; text-align: center; break-inside: avoid; page-break-inside: avoid; }
+figure.diagram svg { max-width: 100%; height: auto; }
+figure.diagram figcaption { font-size: 8.6pt; color: #5b6770; margin-top: .5em;
+                            font-family: "Helvetica Neue", Arial, sans-serif; }
+
+hr { border: none; border-top: 1px solid #dde2e7; margin: 1.6em 0; }
+ul, ol { margin: 0 0 .8em; padding-left: 1.4em; }
+li { margin-bottom: .22em; }
+.section-break { break-before: page; }
+</style></head><body><h1 id="9-working-methodology">9. Working Methodology</h1>
+<h2 id="91-structure-of-the-pipeline">9.1 Structure of the Pipeline</h2>
+<p>Work proceeded in five stages, each producing an artefact consumed by the next. The stages are separated by files on disk rather than by function calls, which meant every intermediate result could be inspected before the following stage ran.</p>
+<pre><code>generate_dataset.py  →  dataset.csv                  (22,000 × 30)
+preprocess.py        →  processed_dataset.csv        (22,000 × 61)
+                     →  preprocessing_params.json    (fitted constants)
+train.py             →  risk_model.pkl, label encoders, model_metadata.json
+inference.py         →  predict(user_input) → prediction + SHAP
+FastAPI service      →  REST endpoints + PostgreSQL persistence
+</code></pre>
+<p>The one arrow that matters more than the others is the second output of <code>preprocess.py</code>. That file carries the constants fitted on the training data forward into serving, and its absence in an earlier iteration of this project was the source of the defects discussed in Section 22.</p>
+<h2 id="92-stage-one-data-generation">9.2 Stage One — Data Generation</h2>
+<p>The generator draws 22,000 records under a fixed random seed. Attributes are not sampled independently. Income is conditioned on occupation and education; expenses are conditioned on income and number of dependants; credit score is a function of debt burden, savings rate and years of experience, plus noise. The intent was to produce a dataset whose marginal and joint distributions resemble something plausible rather than a table of uniform random numbers, so that a model trained on it has a genuine structure to discover.</p>
+<p>The risk label is derived from a weighted sum of five quantities — savings rate, credit score, debt-to-income ratio, investment experience and whether the emergency fund covers less than three months — to which Gaussian noise of standard deviation 8 is added. The resulting continuous score is cut at the 35th and 80th percentiles to give the three classes, producing a 35 / 45 / 20 split across Low, Medium and High.</p>
+<p>The magnitude of that noise term turns out to govern everything that follows. Measured against the deterministic component, whose standard deviation is 7.64, the injected noise is slightly larger. Roughly half the variance in the label is therefore irreducible by construction, and no model — however expressive — can recover it. Section 23 derives the resulting accuracy ceiling and compares it against what the trained model achieved.</p>
+<h2 id="93-stage-two-cleaning-encoding-and-feature-engineering">9.3 Stage Two — Cleaning, Encoding and Feature Engineering</h2>
+<p>Preprocessing runs in a fixed order, and the order is load-bearing.</p>
+<p>Missing-value handling runs first. The script reports 7,264 missing entries in <code>insurance_coverage</code> and imputes them with the mode. That report is an artefact rather than a fact about the data: the generator emits the literal string <code>None</code> as a valid third level of the attribute, and <code>pandas.read_csv</code> treats a bare <code>None</code> as a null by default. A third of the dataset therefore had a genuine category converted to a null and then overwritten with <code>Basic</code>. Section 12 examines the consequences. No duplicate rows were present.</p>
+<p>Nine numeric columns are then clipped to their interquartile bounds at 1.5 × IQR; the columns affected most were <code>loan_amount</code> and <code>total_debt</code>, with 2,674 and 2,514 values clipped respectively.</p>
+<p>Clipping happens <em>before</em> any ratio is derived, which is why the bounds must be carried into serving. A live request carrying an unclipped income produces a debt-to-income ratio the model never saw during training, even though the raw input is perfectly valid.</p>
+<p>Encoding follows. Five columns have a natural order and are mapped to integers: education, income level, investment frequency, insurance coverage and shopping frequency. Six nominal columns are one-hot encoded. Because every <code>None</code> in insurance coverage had already been rewritten to <code>Basic</code>, the fitted ordinal map contains only two levels rather than three. The consequence surfaces at serving time, where a user who reports holding no insurance is encoded as the training median, and is taken up in Sections 12 and 26.</p>
+<p>Seven features are then derived. Four are simple ratios: debt to annual income, savings ratio, expense ratio and luxury spending as a fraction of income. One is the income-to-age ratio. The remaining two are composite indices on a 0–100 scale, each a weighted sum of min–max normalised components:</p>
+<table>
+<thead>
+<tr>
+<th>Score</th>
+<th>Components and weights</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>behavioral_composite_score</code></td>
+<td>investment experience 0.35, investment frequency 0.25, insurance coverage 0.20, emergency fund 0.20</td>
+</tr>
+<tr>
+<td><code>financial_discipline_score</code></td>
+<td>savings rate 0.40, credit score 0.35, inverted debt-to-income 0.25</td>
+</tr>
+</tbody>
+</table>
+<p>The min–max ranges used by these two scores are fitted across the whole training column. A single incoming request cannot recompute them, so they are persisted alongside the ordinal maps and clip bounds.</p>
+<h2 id="94-stage-three-model-training-and-selection">9.4 Stage Three — Model Training and Selection</h2>
+<p>The processed table is split 80/20 with stratification on the risk label under a fixed seed. Five classifiers are trained on the training partition with default hyperparameters and compared on the held-out partition: Random Forest, XGBoost, LightGBM, CatBoost and a two-hidden-layer neural network. Selection is by weighted F1, which was chosen over accuracy because the three classes are unbalanced at 35 / 45 / 20 and accuracy would reward a model that simply favoured the majority band.</p>
+<p>The Random Forest won and was carried forward to a randomised hyperparameter search over twenty candidate configurations with three-fold cross-validation, which lifted its weighted F1 from 0.5949 to 0.6006. Five-fold cross-validation on the tuned model gives 0.5996 ± 0.0032, indicating that the held-out figure is not an artefact of one fortunate split. Section 23 reports the full comparison.</p>
+<p>A second Random Forest was trained to predict investment preference. It does not work, and Section 22 explains why the fault lies in how that label was constructed rather than in the model.</p>
+<h2 id="95-stage-four-explanation">9.5 Stage Four — Explanation</h2>
+<p>Attributions are computed with SHAP. Because the selected model is a tree ensemble, <code>TreeExplainer</code> is used, which computes exact Shapley values for tree models in polynomial time rather than approximating them by sampling. During training, SHAP values are computed across the test partition and averaged by absolute magnitude to rank the features globally. At inference, values are computed for the single submitted row, and the ten largest by absolute value are returned to the caller.</p>
+<p>The serving path does not preserve the sign of an attribution. It takes the absolute value and averages across the three classes before returning the ten largest, so what reaches the interface is a magnitude — how much a feature mattered — rather than a direction. Section 21.4 examines the consequences.</p>
+<h2 id="96-stage-five-serving">9.6 Stage Five — Serving</h2>
+<p>The trained artefacts are loaded once, at process start, and cached for the lifetime of the service. A request to <code>POST /predict</code> is validated against a Pydantic schema whose categorical fields are constrained to exactly the literal values seen in training, so an unrecognised category is rejected with a 422 before it can reach the model. The validated dictionary is passed to <code>inference.predict</code>, which clips it, derives the seven features, encodes the categoricals, aligns the columns to the order recorded in <code>feature_columns.json</code>, and calls the model.</p>
+<p><code>POST /assessment</code> performs the same work and additionally writes the submitted inputs, the prediction, and three rows of behavioural scores to the database inside a transaction. If the model call fails, the assessment row is marked <code>failed</code> rather than left dangling.</p>
+<h2 id="97-verification-of-the-serving-path">9.7 Verification of the Serving Path</h2>
+<p>Because training and serving derive features through different code, the two were checked against each other directly rather than assumed to agree. Three hundred rows were drawn at random from the raw dataset, passed through the serving preprocessor, and the resulting feature vectors compared column by column against the rows the training preprocessor had produced for the same records. All thirteen derived and encoded features agree to within floating-point rounding, on the order of 1e-16.</p>
+<p>A stronger check was then applied end to end. Rows from the held-out test partition were routed through the full serving path and the resulting predictions compared against those obtained by feeding the model its training-format features directly. The two agree on every row. This is the evidence that the accuracy reported in Section 23 is the accuracy a live user actually receives, which was not true of the earlier implementation.</p>
+<hr />
+<blockquote>
+<p><strong>Figure 9.1</strong> — <em>Pipeline flowchart.</em> Five stages as boxes, artefacts as labelled arrows between them. Highlight <code>preprocessing_params.json</code> as a second output of stage two feeding stage five, since that edge is the fix described in Section 22. Place after Section 9.1.</p>
+<p><strong>Figure 9.2</strong> — <em>Distribution of the risk score before thresholding, with the 35th and 80th percentile cuts marked.</em> Generate from <code>generate_dataset.py</code> by plotting the <code>risk_score</code> array. This makes the class boundaries concrete and shows the overlap that the noise term produces. Place in Section 9.2.</p>
+<p><strong>Table 9.1</strong> — <em>Preprocessing operations in execution order,</em> with the column count after each. Rows: load (30), impute missing (30), clip outliers (30), ordinal-encode five columns (35), one-hot encode six nominal columns, replacing them with 25 dummies (54), derive seven features (61). The final count matches <code>processed_dataset.csv</code>. Place at the end of Section 9.3.</p>
+</blockquote></body></html>

@@ -1,0 +1,136 @@
+<!doctype html><html><head><meta charset='utf-8'><title>07_objectives</title><style>
+@page { size: A4; margin: 20mm 18mm 20mm 18mm; }
+@page :first { margin-top: 24mm; }
+html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+body {
+  font-family: "Charter", "Georgia", "Times New Roman", serif;
+  font-size: 10.5pt; line-height: 1.52; color: #14171a; margin: 0;
+  hyphens: auto; text-align: justify;
+}
+h1, h2, h3 { font-family: "Helvetica Neue", Arial, sans-serif; color: #0b0d0f; text-align: left; }
+h1 { font-size: 19pt; line-height: 1.2; margin: 0 0 1.1em; padding-bottom: .35em;
+     border-bottom: 2px solid #14171a; break-after: avoid; }
+h2 { font-size: 13pt; margin: 1.7em 0 .55em; break-after: avoid; }
+h3 { font-size: 11pt; margin: 1.3em 0 .45em; break-after: avoid; }
+p { margin: 0 0 .75em; orphans: 3; widows: 3; }
+strong { font-weight: 600; }
+a { color: #14171a; text-decoration: none; }
+
+/* Tables */
+table { border-collapse: collapse; width: 100%; margin: 1em 0 1.2em;
+        font-size: 9.2pt; break-inside: avoid; font-family: "Helvetica Neue", Arial, sans-serif; }
+thead { background: #f2f4f6; }
+th, td { border: 1px solid #ccd2d8; padding: 5px 8px; text-align: left; vertical-align: top; }
+th { font-weight: 600; }
+tbody tr:nth-child(even) { background: #fafbfc; }
+
+/* Code */
+code { font-family: "SF Mono", "Menlo", monospace; font-size: 8.8pt;
+       background: #f4f6f8; padding: 1px 4px; border-radius: 3px; }
+pre { background: #f7f9fa; border: 1px solid #e2e7ec; border-left: 3px solid #8b98a5;
+      padding: 9px 12px; border-radius: 3px; overflow-x: auto; break-inside: avoid;
+      font-size: 8.6pt; line-height: 1.42; text-align: left; }
+pre code { background: none; padding: 0; font-size: inherit; }
+
+/* Figure / screenshot callouts */
+blockquote { margin: .9em 0; padding: .6em .9em; background: #fffdf3;
+             border-left: 3px solid #d9b23a; font-size: 9.4pt; break-inside: avoid;
+             font-family: "Helvetica Neue", Arial, sans-serif; text-align: left; }
+blockquote p { margin: 0 0 .35em; }
+blockquote p:last-child { margin-bottom: 0; }
+
+/* Rendered mermaid diagrams */
+figure.diagram { margin: 1.2em 0; text-align: center; break-inside: avoid; page-break-inside: avoid; }
+figure.diagram svg { max-width: 100%; height: auto; }
+figure.diagram figcaption { font-size: 8.6pt; color: #5b6770; margin-top: .5em;
+                            font-family: "Helvetica Neue", Arial, sans-serif; }
+
+hr { border: none; border-top: 1px solid #dde2e7; margin: 1.6em 0; }
+ul, ol { margin: 0 0 .8em; padding-left: 1.4em; }
+li { margin-bottom: .22em; }
+.section-break { break-before: page; }
+</style></head><body><h1 id="7-objectives">7. Objectives</h1>
+<h2 id="71-primary-objectives">7.1 Primary Objectives</h2>
+<p><strong>O1 — Construct a labelled dataset suitable for supervised risk classification.</strong>
+Generate at least 20,000 records spanning demographic, financial and lifestyle attributes, with conditional dependencies specified explicitly rather than sampled independently, and derive a three-band risk label from a documented scoring function.</p>
+<p><strong>O2 — Build a reproducible preprocessing pipeline.</strong>
+Handle missing values, clip outliers, encode categorical attributes, and derive ratio and composite features. Persist every constant fitted during this stage so that it can be reused at inference.</p>
+<p><strong>O3 — Select a classifier by controlled comparison.</strong>
+Train Random Forest, XGBoost, LightGBM, CatBoost and a neural network on an identical partition with default hyperparameters; select on weighted F1; tune the winner; validate by cross-validation.</p>
+<p><strong>O4 — Evaluate against the attainable ceiling.</strong>
+Derive the Bayes-optimal accuracy implied by the label's generating function and report model accuracy relative to it, rather than relative to perfect classification.</p>
+<p><strong>O5 — Produce per-user explanations.</strong>
+Compute exact Shapley attributions for each individual prediction using the polynomial-time tree algorithm [7], and surface them in the interface alongside the predicted band.</p>
+<p><strong>O6 — Verify training–serving equivalence.</strong>
+Demonstrate that the feature vector computed for a live request is identical to the one the training pipeline would have computed for the same record.</p>
+<p><strong>O7 — Deliver an end-to-end system.</strong>
+A user completes a form; the backend validates the input; the model predicts; an explanation is generated; the assessment is persisted; the dashboard renders the result and the history.</p>
+<h2 id="72-secondary-objectives">7.2 Secondary Objectives</h2>
+<p><strong>O8 — Predict investment preference</strong> as a secondary classification target.</p>
+<p><strong>O9 — Detect behavioural biases</strong> and generate personalised recommendations from the user's inputs.</p>
+<p><strong>O10 — Containerise the system</strong> with Docker Compose across frontend, backend and database.</p>
+<h2 id="73-outcomes">7.3 Outcomes</h2>
+<p>The objectives are restated below against what was achieved, including where the achievement was partial and where it was not achieved at all.</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>Objective</th>
+<th>Outcome</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>O1</td>
+<td>Labelled dataset</td>
+<td><strong>Met.</strong> 22,000 records, 30 columns, conditional dependencies documented in Section 12.3. One defect: a third of <code>insurance_coverage</code> values were destroyed on load (Section 12.5).</td>
+</tr>
+<tr>
+<td>O2</td>
+<td>Reproducible preprocessing</td>
+<td><strong>Met.</strong> Constants persisted to <code>preprocessing_params.json</code>. Re-running the pipeline leaves the processed dataset byte-identical.</td>
+</tr>
+<tr>
+<td>O3</td>
+<td>Controlled model selection</td>
+<td><strong>Met.</strong> Random Forest selected on untuned weighted F1 = 0.5949, tuned to 0.6006, cross-validated at 0.5996 ± 0.0032. The published comparison table reports the tuned winner against untuned competitors, which Section 15.4 flags.</td>
+</tr>
+<tr>
+<td>O4</td>
+<td>Evaluation against ceiling</td>
+<td><strong>Met.</strong> Bayes-optimal accuracy derived as 0.6104; the model attains 0.6039, or 98.9% of it, and 95.9% of the accuracy available above the majority baseline.</td>
+</tr>
+<tr>
+<td>O5</td>
+<td>Per-user explanations</td>
+<td><strong>Not met.</strong> Exact Shapley values are computed correctly, then reduced to absolute magnitudes averaged across classes before being returned. The user receives a magnitude, not a direction, while the interface caption asserts a direction. Section 21.4.</td>
+</tr>
+<tr>
+<td>O6</td>
+<td>Training–serving equivalence</td>
+<td><strong>Met, after repair.</strong> Five disagreements were found and eliminated; equivalence is now verified to 10⁻¹⁶ across 300 records and to exact prediction agreement on every held-out row. Section 22.4.</td>
+</tr>
+<tr>
+<td>O7</td>
+<td>End-to-end system</td>
+<td><strong>Met, after repair.</strong> The form initially submitted to the non-persisting endpoint, so nothing entered through the interface reached the database. Corrected and verified in Section 19.5.</td>
+</tr>
+<tr>
+<td>O8</td>
+<td>Investment preference</td>
+<td><strong>Not met, and not achievable.</strong> Accuracy 0.2586 against a majority baseline of 0.2869 and a ceiling of ≈0.3210. The label was generated without reference to any feature. Reported as a negative result in Section 22.3.</td>
+</tr>
+<tr>
+<td>O9</td>
+<td>Biases and recommendations</td>
+<td><strong>Met as implemented, unvalidated.</strong> Nine bias rules and eleven recommendation branches, all deterministic functions of the inputs. No validation against labelled data was performed and none is claimed.</td>
+</tr>
+<tr>
+<td>O10</td>
+<td>Containerisation</td>
+<td><strong>Met.</strong> Three services compose and start healthy. <code>GET /model/info</code> fails under Docker because it reads a hardcoded absolute path (Section 16.7).</td>
+</tr>
+</tbody>
+</table>
+<p>Seven of ten objectives were met, two only after defects found during the writing of this report were repaired. O5 and O8 were not met: the first through an implementation fault that remains unrepaired, the second because the objective was unattainable given how its target was constructed.</p>
+<p>Stating O5 as unmet is uncomfortable, since explainability is the feature that distinguishes this system from the rubric it proposes to replace (Section 4.5). The fault is two lines of code and is described precisely in Section 21.4. It is left unrepaired because correcting it would invalidate every SHAP figure reported in Sections 14, 21 and 22, and the report records the defect in preference to regenerating results under time pressure. Section 27 lists it as the first item of future work.</p></body></html>

@@ -1,0 +1,129 @@
+{
+  "ordinal_mappings": {
+    "education": {
+      "High School": 0,
+      "Graduate": 1,
+      "Post Graduate": 2,
+      "PhD": 3
+    },
+    "income_level": {
+      "Low": 0,
+      "Middle": 1,
+      "High": 2
+    },
+    "investment_frequency": {
+      "Never": 0,
+      "Rarely": 1,
+      "Monthly": 2,
+      "Weekly": 3
+    },
+    "insurance_coverage": {
+      "Basic": 0,
+      "Comprehensive": 1
+    },
+    "shopping_frequency": {
+      "Rarely": 0,
+      "Monthly": 1,
+      "Weekly": 2,
+      "Daily": 3
+    }
+  },
+  "savings_rate_scale": "fraction",
+  "clip_bounds": {
+    "monthly_income": {
+      "lo": -29480.125,
+      "hi": 125260.875
+    },
+    "monthly_expenses": {
+      "lo": -25136.75,
+      "hi": 89251.25
+    },
+    "total_debt": {
+      "lo": -39188.125,
+      "hi": 75126.875
+    },
+    "loan_amount": {
+      "lo": -14991.25,
+      "hi": 27552.75
+    },
+    "credit_score": {
+      "lo": 660.5,
+      "hi": 920.5
+    },
+    "travel_expenses_annual": {
+      "lo": -19011.25,
+      "hi": 37962.75
+    },
+    "gaming_expenses_monthly": {
+      "lo": -511.5,
+      "hi": 852.5
+    },
+    "investment_experience_years": {
+      "lo": -4.5,
+      "hi": 7.5
+    },
+    "emergency_fund_months": {
+      "lo": -4.0,
+      "hi": 20.0
+    }
+  },
+  "minmax": {
+    "investment_experience_years": {
+      "min": 0.0,
+      "max": 7.5
+    },
+    "investment_frequency_encoded": {
+      "min": 0.0,
+      "max": 3.0
+    },
+    "insurance_coverage_encoded": {
+      "min": 0.0,
+      "max": 1.0
+    },
+    "emergency_fund_months": {
+      "min": 0.0,
+      "max": 20.0
+    },
+    "savings_rate": {
+      "min": -0.1,
+      "max": 0.6
+    },
+    "credit_score": {
+      "min": 660.5,
+      "max": 900.0
+    },
+    "debt_to_income_ratio": {
+      "min": 3.0212603768673713e-05,
+      "max": 1.2473745600053132
+    }
+  },
+  "composite_weights": {
+    "behavioral_composite_score": {
+      "investment_experience_years": 0.35,
+      "investment_frequency_encoded": 0.25,
+      "insurance_coverage_encoded": 0.2,
+      "emergency_fund_months": 0.2
+    },
+    "financial_discipline_score": {
+      "savings_rate": 0.4,
+      "credit_score": 0.35,
+      "debt_to_income_ratio_inverted": 0.25
+    }
+  },
+  "medians": {
+    "debt_to_income_ratio": 0.021862272893171913,
+    "savings_ratio": 0.31593724503399856,
+    "expense_ratio": 0.6840627549660014,
+    "luxury_to_income_ratio": 0.04437230392172167,
+    "age_income_ratio": 1326.1722222222222,
+    "behavioral_composite_score": 28.99999999146667,
+    "financial_discipline_score": 67.20947070537704
+  },
+  "ordinal_medians": {
+    "education_encoded": 1.0,
+    "income_level_encoded": 1.0,
+    "investment_frequency_encoded": 1.0,
+    "insurance_coverage_encoded": 0.0,
+    "shopping_frequency_encoded": 1.0
+  }
+}

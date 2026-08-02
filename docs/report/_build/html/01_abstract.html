@@ -1,0 +1,60 @@
+<!doctype html><html><head><meta charset='utf-8'><title>01_abstract</title><style>
+@page { size: A4; margin: 20mm 18mm 20mm 18mm; }
+@page :first { margin-top: 24mm; }
+html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+body {
+  font-family: "Charter", "Georgia", "Times New Roman", serif;
+  font-size: 10.5pt; line-height: 1.52; color: #14171a; margin: 0;
+  hyphens: auto; text-align: justify;
+}
+h1, h2, h3 { font-family: "Helvetica Neue", Arial, sans-serif; color: #0b0d0f; text-align: left; }
+h1 { font-size: 19pt; line-height: 1.2; margin: 0 0 1.1em; padding-bottom: .35em;
+     border-bottom: 2px solid #14171a; break-after: avoid; }
+h2 { font-size: 13pt; margin: 1.7em 0 .55em; break-after: avoid; }
+h3 { font-size: 11pt; margin: 1.3em 0 .45em; break-after: avoid; }
+p { margin: 0 0 .75em; orphans: 3; widows: 3; }
+strong { font-weight: 600; }
+a { color: #14171a; text-decoration: none; }
+
+/* Tables */
+table { border-collapse: collapse; width: 100%; margin: 1em 0 1.2em;
+        font-size: 9.2pt; break-inside: avoid; font-family: "Helvetica Neue", Arial, sans-serif; }
+thead { background: #f2f4f6; }
+th, td { border: 1px solid #ccd2d8; padding: 5px 8px; text-align: left; vertical-align: top; }
+th { font-weight: 600; }
+tbody tr:nth-child(even) { background: #fafbfc; }
+
+/* Code */
+code { font-family: "SF Mono", "Menlo", monospace; font-size: 8.8pt;
+       background: #f4f6f8; padding: 1px 4px; border-radius: 3px; }
+pre { background: #f7f9fa; border: 1px solid #e2e7ec; border-left: 3px solid #8b98a5;
+      padding: 9px 12px; border-radius: 3px; overflow-x: auto; break-inside: avoid;
+      font-size: 8.6pt; line-height: 1.42; text-align: left; }
+pre code { background: none; padding: 0; font-size: inherit; }
+
+/* Figure / screenshot callouts */
+blockquote { margin: .9em 0; padding: .6em .9em; background: #fffdf3;
+             border-left: 3px solid #d9b23a; font-size: 9.4pt; break-inside: avoid;
+             font-family: "Helvetica Neue", Arial, sans-serif; text-align: left; }
+blockquote p { margin: 0 0 .35em; }
+blockquote p:last-child { margin-bottom: 0; }
+
+/* Rendered mermaid diagrams */
+figure.diagram { margin: 1.2em 0; text-align: center; break-inside: avoid; page-break-inside: avoid; }
+figure.diagram svg { max-width: 100%; height: auto; }
+figure.diagram figcaption { font-size: 8.6pt; color: #5b6770; margin-top: .5em;
+                            font-family: "Helvetica Neue", Arial, sans-serif; }
+
+hr { border: none; border-top: 1px solid #dde2e7; margin: 1.6em 0; }
+ul, ol { margin: 0 0 .8em; padding-left: 1.4em; }
+li { margin-bottom: .22em; }
+.section-break { break-before: page; }
+</style></head><body><h1 id="1-abstract">1. Abstract</h1>
+<p>Retail financial risk profiling is still performed almost exclusively by questionnaires scored against fixed, hand-written rubrics. Such rubrics are transparent and cheap, but their weights encode assumption rather than evidence, and being additive they cannot represent interactions between a respondent's attributes. This project replaces the rubric with a learned classifier while attempting to preserve the per-answer transparency that made it defensible, and reports what happened when that attempt was audited end to end.</p>
+<p>A web application was built spanning data generation, preprocessing, model selection, explanation, persistence and presentation. Twenty-six demographic, financial and lifestyle attributes are elicited through a four-step form, validated by schemas shared between a React client and a FastAPI service, classified into three risk bands, attributed with Shapley values, and stored in PostgreSQL. Five classifiers were compared on an identical partition; a Random Forest was selected on weighted F1 and tuned, reaching accuracy 0.6039, weighted F1 0.6006 and one-vs-rest ROC AUC 0.7461 on 4,400 held-out records, with five-fold cross-validated F1 of 0.5996 ± 0.0032.</p>
+<p>Because no public dataset joins these attributes to a behavioural risk label, and because risk-band suitability is never observed in practice, the 22,000 records are synthetic and generated from a documented scoring function. This forfeits any empirical claim about real financial behaviour. It permits, in exchange, an evaluation unavailable for real data: since the label is a threshold on a linear score perturbed by Gaussian noise of standard deviation 8.0 against a signal of standard deviation 7.64, the Bayes-optimal accuracy can be derived exactly. It is 0.6104. The model therefore attains 98.9% of the maximum accuracy any classifier could reach, and 95.9% of the accuracy available above the 0.4500 majority-class baseline. Its predicted class distribution tracks the Bayes rule's rather than the true distribution, and 1,706 of its 1,743 errors fall between adjacent bands, with only 0.84% confusing Low with High. An accuracy of 60% read against unity suggests a weak model; read against its ceiling it indicates that nearly all recoverable signal was extracted.</p>
+<p>A secondary classifier predicting investment preference is reported as a negative result. It scores 0.2586 against a majority baseline of 0.2869 and ranks at chance. Inspection of the generator shows the label is drawn from a distribution conditioned on the risk band and on no feature whatever, bounding any classifier at 0.3675 even under perfect knowledge of that band. The failure was diagnosed by reading the data-generation code rather than by further experimentation.</p>
+<p>The most consequential findings concern defects that no accuracy metric exposed. Feature engineering had been implemented twice, once for training and once for serving, and the two disagreed in five places; because the test set was evaluated through the training path, every reported metric remained correct while every live prediction was wrong. A third of one categorical column was silently destroyed by the CSV reader and imputed to a different category. The explanation pipeline discarded the sign of every Shapley value before display, so the interface distinguished risk-increasing from risk-decreasing features over data in which no value was ever negative. The submission form posted to the non-persisting endpoint, so nothing a user entered reached the database. Five of these six defects lay not inside any function but in the agreement between two representations of one computation, and all eleven tests in the suite passed throughout. They were found by comparing representations against each other: routing training records through the serving preprocessor and checking the feature vectors agree, which they now do to 10⁻¹⁶, with prediction agreement on every held-out row.</p>
+<p>Seven of ten objectives were met, two only after repair. Two were not: the explainability module does not deliver signed per-user attributions, and the investment-preference objective was unattainable by construction. The report treats these as results rather than omissions.</p>
+<p>The contribution is a systems result, not a scientific one. It advances neither behavioural finance nor machine learning. It offers a verified end-to-end pipeline, an evaluation conducted against a derived ceiling rather than against perfection, and a documented account of the failure modes that conventional model evaluation cannot see — chief among them that the accuracy stated in a report and the accuracy a user receives are distinct quantities, and that establishing their equality requires a comparison nobody thinks to run.</p>
+<p><strong>Keywords</strong> — behavioural finance, financial risk profiling, explainable artificial intelligence, SHAP, Shapley values, Random Forest, Bayes-optimal accuracy, training–serving skew, synthetic data, negative results.</p></body></html>

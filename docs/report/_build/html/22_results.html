@@ -1,0 +1,352 @@
+<!doctype html><html><head><meta charset='utf-8'><title>22_results</title><style>
+@page { size: A4; margin: 20mm 18mm 20mm 18mm; }
+@page :first { margin-top: 24mm; }
+html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+body {
+  font-family: "Charter", "Georgia", "Times New Roman", serif;
+  font-size: 10.5pt; line-height: 1.52; color: #14171a; margin: 0;
+  hyphens: auto; text-align: justify;
+}
+h1, h2, h3 { font-family: "Helvetica Neue", Arial, sans-serif; color: #0b0d0f; text-align: left; }
+h1 { font-size: 19pt; line-height: 1.2; margin: 0 0 1.1em; padding-bottom: .35em;
+     border-bottom: 2px solid #14171a; break-after: avoid; }
+h2 { font-size: 13pt; margin: 1.7em 0 .55em; break-after: avoid; }
+h3 { font-size: 11pt; margin: 1.3em 0 .45em; break-after: avoid; }
+p { margin: 0 0 .75em; orphans: 3; widows: 3; }
+strong { font-weight: 600; }
+a { color: #14171a; text-decoration: none; }
+
+/* Tables */
+table { border-collapse: collapse; width: 100%; margin: 1em 0 1.2em;
+        font-size: 9.2pt; break-inside: avoid; font-family: "Helvetica Neue", Arial, sans-serif; }
+thead { background: #f2f4f6; }
+th, td { border: 1px solid #ccd2d8; padding: 5px 8px; text-align: left; vertical-align: top; }
+th { font-weight: 600; }
+tbody tr:nth-child(even) { background: #fafbfc; }
+
+/* Code */
+code { font-family: "SF Mono", "Menlo", monospace; font-size: 8.8pt;
+       background: #f4f6f8; padding: 1px 4px; border-radius: 3px; }
+pre { background: #f7f9fa; border: 1px solid #e2e7ec; border-left: 3px solid #8b98a5;
+      padding: 9px 12px; border-radius: 3px; overflow-x: auto; break-inside: avoid;
+      font-size: 8.6pt; line-height: 1.42; text-align: left; }
+pre code { background: none; padding: 0; font-size: inherit; }
+
+/* Figure / screenshot callouts */
+blockquote { margin: .9em 0; padding: .6em .9em; background: #fffdf3;
+             border-left: 3px solid #d9b23a; font-size: 9.4pt; break-inside: avoid;
+             font-family: "Helvetica Neue", Arial, sans-serif; text-align: left; }
+blockquote p { margin: 0 0 .35em; }
+blockquote p:last-child { margin-bottom: 0; }
+
+/* Rendered mermaid diagrams */
+figure.diagram { margin: 1.2em 0; text-align: center; break-inside: avoid; page-break-inside: avoid; }
+figure.diagram svg { max-width: 100%; height: auto; }
+figure.diagram figcaption { font-size: 8.6pt; color: #5b6770; margin-top: .5em;
+                            font-family: "Helvetica Neue", Arial, sans-serif; }
+
+hr { border: none; border-top: 1px solid #dde2e7; margin: 1.6em 0; }
+ul, ol { margin: 0 0 .8em; padding-left: 1.4em; }
+li { margin-bottom: .22em; }
+.section-break { break-before: page; }
+</style></head><body><h1 id="22-results">22. Results</h1>
+<h2 id="221-headline-outcome">22.1 Headline Outcome</h2>
+<p>The tuned Random Forest classifies <code>risk_category</code> on a held-out set of 4,400 records with accuracy 0.6039, weighted F1 0.6006 and one-vs-rest ROC AUC 0.7461. Against a majority-class baseline of 0.4500, the model recovers a substantial share of the available signal.</p>
+<p>Taken alone, sixty percent accuracy invites the reading that the model is mediocre. Section 22.2 argues that this reading is wrong, and that the correct comparison is not against 100% but against the ceiling the data itself permits.</p>
+<p>Three further results follow: a secondary model that cannot work and the reason why, a class of defect in the serving path that no accuracy metric could have exposed, and a redundancy in the feature set that corrupts the explanations without touching the predictions.</p>
+<h2 id="222-the-model-operates-at-the-bayes-limit">22.2 The Model Operates at the Bayes Limit</h2>
+<p><code>risk_category</code> is not a property of the synthetic individuals. It is a threshold applied to a continuous score which, by construction in <code>generate_dataset.py</code>, equals a weighted sum of five features plus Gaussian noise:</p>
+<pre><code>risk_score = −30·savings_rate + 25·(1 − credit_score/900)
+             + 20·(min(dti,5)/5) − 15·(investment_experience/20)
+             + 10·[emergency_fund &lt; 3]  +  ε,   ε ~ N(0, 8)
+</code></pre>
+<p>Every one of those five quantities is available to the model as a feature. The deterministic component is therefore <em>exactly</em> recoverable in principle. What is not recoverable is ε, and ε has a standard deviation of 8.00 against a signal standard deviation of 7.642 — a signal-to-noise variance ratio of 0.912.</p>
+<p>This permits the Bayes-optimal accuracy to be computed rather than guessed. For a record with signal <em>s</em>, the probability of each class is determined by where the two thresholds fall relative to <em>s</em> under the noise distribution:</p>
+<pre><code>P(Low  | s) = Φ((t₁ − s)/8)
+P(Med  | s) = Φ((t₂ − s)/8) − Φ((t₁ − s)/8)
+P(High | s) = 1 − Φ((t₂ − s)/8)
+</code></pre>
+<p>The thresholds were recovered numerically by solving for the values at which the induced class proportions equal the observed 35 / 45 / 20, giving <em>t₁</em> = −11.074 and <em>t₂</em> = 2.598. A Bayes-optimal classifier assigns the argmax of these three probabilities. Averaging its success probability across all 22,000 records yields the ceiling.</p>
+<table>
+<thead>
+<tr>
+<th>Quantity</th>
+<th>Accuracy</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Majority-class baseline</td>
+<td>0.4500</td>
+</tr>
+<tr>
+<td>Tuned Random Forest, held-out</td>
+<td><strong>0.6039</strong></td>
+</tr>
+<tr>
+<td><strong>Bayes-optimal ceiling</strong></td>
+<td><strong>0.6104</strong></td>
+</tr>
+</tbody>
+</table>
+<p>The model attains <strong>98.9%</strong> of the maximum accuracy achievable by any classifier on this label. The remaining 0.65 points are not a modelling deficiency; they are the price of a label that is roughly half noise.</p>
+<p>Two independent observations corroborate that the Random Forest has converged on the Bayes decision rule rather than merely landing near its accuracy.</p>
+<p><strong>The predicted class distribution matches.</strong> The Bayes rule, faced with a noisy threshold, systematically retreats toward the central class: near either boundary the middle band is the safest guess, so <em>High</em> is predicted less often than it occurs. The model reproduces this almost exactly.</p>
+<table>
+<thead>
+<tr>
+<th>Class</th>
+<th>True share</th>
+<th>Bayes rule predicts</th>
+<th>Random Forest predicts</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Low</td>
+<td>35.0%</td>
+<td>32.9%</td>
+<td>31.4%</td>
+</tr>
+<tr>
+<td>Medium</td>
+<td>45.0%</td>
+<td>54.4%</td>
+<td>56.2%</td>
+</tr>
+<tr>
+<td>High</td>
+<td>20.0%</td>
+<td>12.7%</td>
+<td>12.5%</td>
+</tr>
+</tbody>
+</table>
+<p>The under-prediction of <em>High</em> is not a bias the model acquired from imbalanced data. It is the optimal response to threshold noise, and the Bayes rule commits it too.</p>
+<p><strong>Errors respect the ordinal structure.</strong> Of 4,400 test records, 2,657 are classified correctly and 1,706 of the 1,743 errors fall between adjacent bands. Only <strong>37 records — 0.84%</strong> — are misclassified across two bands, confusing <em>Low</em> with <em>High</em>.</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>pred Low</th>
+<th>pred Medium</th>
+<th>pred High</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>true Low</strong></td>
+<td>906</td>
+<td>617</td>
+<td>17</td>
+</tr>
+<tr>
+<td><strong>true Medium</strong></td>
+<td>454</td>
+<td>1373</td>
+<td>153</td>
+</tr>
+<tr>
+<td><strong>true High</strong></td>
+<td>20</td>
+<td>482</td>
+<td>378</td>
+</tr>
+</tbody>
+</table>
+<p>A model that had failed to learn the underlying score would scatter its errors. This one places them where the noise places them: at the thresholds.</p>
+<p>The cost is borne by recall on the minority class. <em>High</em> is identified with precision 0.6898 but recall 0.4295 — the model is right when it says <em>High</em>, and says it too rarely. For a risk-screening application that asymmetry runs the wrong way, and Section 24 takes it up.</p>
+<h2 id="223-the-investment-preference-model-cannot-work">22.3 The Investment-Preference Model Cannot Work</h2>
+<p>The secondary classifier reports accuracy 0.2586, weighted F1 0.1892 and ROC AUC 0.4949 across five classes. It is beaten by the majority-class baseline of 0.2869, and its ROC AUC is indistinguishable from the 0.5000 of a coin.</p>
+<p>The cause is in <code>generate_dataset.py</code>, at the point where the label is created:</p>
+<pre><code class="language-python">def inv_pref(risk):
+    if risk == 'Low':    return choice(opts, p=[0.40,0.25,0.10,0.20,0.05])
+    elif risk == 'Medium': return choice(opts, p=[0.15,0.35,0.25,0.15,0.10])
+    else:                return choice(opts, p=[0.05,0.20,0.35,0.10,0.30])
+</code></pre>
+<p>The draw is conditioned on <code>risk_category</code> and on nothing else. Age, income, investment experience, luxury spending — none of the twenty-six inputs enters. The label is a random sample from one of three fixed distributions, and it therefore carries no information about the features beyond what <code>risk_category</code> already encodes.</p>
+<p>The ceiling follows directly. A classifier that knew each record's true risk band with certainty could do no better than always guess that band's modal preference:</p>
+<pre><code>ceiling | true risk = Σₖ P(risk=k) · max(pₖ) = 0.3675
+</code></pre>
+<p>And no classifier knows the true band; the best available estimate is 60.4% accurate. Propagating that gives an achievable ceiling of approximately <strong>0.3210</strong>.</p>
+<table>
+<thead>
+<tr>
+<th>Quantity</th>
+<th>Accuracy</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Random Forest achieved</td>
+<td>0.2586</td>
+</tr>
+<tr>
+<td>Majority-class baseline</td>
+<td>0.2869</td>
+</tr>
+<tr>
+<td>Ceiling given <em>predicted</em> risk</td>
+<td>≈ 0.3210</td>
+</tr>
+<tr>
+<td>Ceiling given <em>perfect</em> risk</td>
+<td>0.3675</td>
+</tr>
+</tbody>
+</table>
+<p>Even a perfect classifier would be wrong on nearly two records in three. The model's failure to beat the baseline is a separate and smaller problem — a five-class Random Forest on a label with no learnable structure will fit noise in the training partition and generalise worse than a constant — but the ceiling establishes that no amount of tuning, no alternative algorithm and no additional feature could rescue this target.</p>
+<p>This is reported as a negative result. The system exposes <code>investment_preference</code> through its API and renders it in the interface, and this report does not claim the field is meaningful. The finding is about the construction of the label, not about behavioural finance, and it should not be read as evidence that investment preference is unpredictable in general.</p>
+<h2 id="224-trainingserving-skew">22.4 Training–Serving Skew</h2>
+<p>The most consequential defects found in this project were invisible to every metric reported above, because they lay outside the code that produced those metrics.</p>
+<p>Feature engineering was implemented twice: once in <code>preprocess.py</code>, which prepared the training data, and once in <code>inference.py</code>, which served live requests. The offline test set was evaluated through the first path. Live users were served through the second. The two disagreed in five places.</p>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Feature</th>
+<th>Training</th>
+<th>Serving (as implemented)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td><code>savings_rate</code></td>
+<td>fraction, −0.1 to 0.6</td>
+<td>percentage, 0 to 100, passed through unscaled</td>
+</tr>
+<tr>
+<td>2</td>
+<td><code>debt_to_income_ratio</code></td>
+<td><code>debt / (income × 12)</code></td>
+<td><code>debt / income</code> — 12× too large</td>
+</tr>
+<tr>
+<td>3</td>
+<td><code>age_income_ratio</code></td>
+<td><code>income / age</code></td>
+<td><code>age / income</code> — inverted</td>
+</tr>
+<tr>
+<td>4</td>
+<td>ordinal maps</td>
+<td><code>PhD</code>, <code>Middle</code>, 4-level frequency</td>
+<td><code>Doctorate</code>, <code>Medium</code>, 5-level frequency</td>
+</tr>
+<tr>
+<td>5</td>
+<td>composite scores</td>
+<td>min–max weighted, constants fitted on the training column</td>
+<td>ad-hoc formulas invented in the serving module</td>
+</tr>
+</tbody>
+</table>
+<p>The first is the most damaging, because <code>savings_rate</code> carries the largest SHAP attribution of any feature. A user reporting a 10% savings rate submitted the value <code>10</code>, which the model — trained on a column whose maximum is 0.6 — encountered sixteen standard deviations beyond anything in its experience. Decision trees do not extrapolate; every such value fell into the same terminal leaf.</p>
+<p>The effect is visible in the model's response to that single input, holding all others fixed:</p>
+<table>
+<thead>
+<tr>
+<th><code>savings_rate</code> submitted</th>
+<th>Before the fix</th>
+<th>After the fix, P(High)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0%</td>
+<td>High (conf 0.534)</td>
+<td>0.454</td>
+</tr>
+<tr>
+<td>5%</td>
+<td>—</td>
+<td>0.438</td>
+</tr>
+<tr>
+<td>10%</td>
+<td><strong>Medium</strong> (conf 0.472)</td>
+<td>0.408</td>
+</tr>
+<tr>
+<td>20%</td>
+<td>—</td>
+<td>0.345</td>
+</tr>
+<tr>
+<td>30%</td>
+<td>Medium (conf 0.507)</td>
+<td>0.235</td>
+</tr>
+<tr>
+<td>45%</td>
+<td>—</td>
+<td>0.152</td>
+</tr>
+<tr>
+<td>60%</td>
+<td>Medium (conf 0.456)</td>
+<td>0.113</td>
+</tr>
+<tr>
+<td>100%</td>
+<td>Low (conf 0.466)</td>
+<td>—</td>
+</tr>
+</tbody>
+</table>
+<p>Before the repair, the predicted risk was not monotone in the savings rate and a user saving 10% of income was assessed <em>Medium</em> where the training scale placed them at <em>High</em>. After it, <code>P(High)</code> declines monotonically across the whole range, which is the behaviour the generating function requires.</p>
+<p>The repair removed the possibility of recurrence rather than correcting the five instances. <code>preprocess.py</code> now writes every constant it fits — ordinal maps, IQR clip bounds, min–max ranges, imputation medians — to <code>models/preprocessing_params.json</code>, and <code>inference.py</code> loads that artefact instead of restating the values. No hardcoded encoding remains in the serving path.</p>
+<p>Equivalence was then verified rather than assumed. Three hundred randomly drawn raw records were passed through the serving preprocessor and compared column by column against the rows the training preprocessor produced for the same records: all thirteen derived and encoded features agree to within 10⁻¹⁶. Held-out records routed through the full serving path produce predictions identical to feeding the model its training-format features directly, on <strong>every</strong> row.</p>
+<p>Re-running <code>preprocess.py</code> after the change left <code>processed_dataset.csv</code> byte-identical, so the trained model remained valid and no retraining was required. <strong>The accuracy reported in Section 22.2 is now the accuracy a live user receives. Before the repair, it was not.</strong></p>
+<p>The general lesson is worth stating. Every one of the five defects lived in the <em>agreement between two implementations of one computation</em>, and no test in the suite compared them. A test set drawn from the training pipeline validates the model; it says nothing about the pipeline that will serve it.</p>
+<h2 id="225-redundancy-corrupts-the-explanations">22.5 Redundancy Corrupts the Explanations</h2>
+<p><code>savings_ratio</code> and <code>expense_ratio</code> are exact complements. Their definitions give <code>savings_ratio = 1 − expense_ratio</code> identically, and across the 22,000 records their Pearson correlation is <strong>−1.000000</strong>, with <code>|savings_ratio + expense_ratio − 1|</code> never exceeding 4.4 × 10⁻¹⁶. <code>savings_rate</code>, the raw column, is a third encoding of the same quantity — a noisy observation of <code>savings_ratio</code>, correlating with it at 0.944.</p>
+<p>The global SHAP ranking splits the resulting attribution:</p>
+<table>
+<thead>
+<tr>
+<th>Rank</th>
+<th>Feature</th>
+<th>Mean abs. SHAP</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>savings_rate</td>
+<td>0.0462</td>
+</tr>
+<tr>
+<td>2</td>
+<td>financial_discipline_score</td>
+<td>0.0407</td>
+</tr>
+<tr>
+<td>3</td>
+<td>emergency_fund_months</td>
+<td>0.0280</td>
+</tr>
+<tr>
+<td>4</td>
+<td>savings_ratio</td>
+<td>0.0217</td>
+</tr>
+<tr>
+<td>5</td>
+<td>expense_ratio</td>
+<td>0.0217</td>
+</tr>
+</tbody>
+</table>
+<p>Ranks four and five are identical to four decimal places, which is what a tree ensemble produces when offered two perfectly anti-correlated columns: each split that might have used one is equally likely to use the other, and Shapley attribution divides between them. <code>financial_discipline_score</code> at rank two compounds the problem, since <code>savings_rate</code> is its highest-weighted component at 0.40.</p>
+<p>A Random Forest is not harmed in accuracy by collinear inputs. The damage is confined to interpretation — and interpretation is the stated purpose of computing SHAP values at all. A reader taking the ranking at face value sees the savings signal distributed across three rows and two composites, and would substantially underestimate how completely one quantity dominates this model.</p>
+<p>The defect was identified after the results were generated. Removing <code>expense_ratio</code> would leave accuracy essentially unchanged and make the explanation honest; doing so would require regenerating every figure in this report. It is recorded rather than silently corrected.</p>
+<hr />
+<blockquote>
+<p><strong>Figure 22.1</strong> — <em>Confusion matrix heat-map,</em> 3×3, annotated with counts and row-normalised percentages. The off-diagonal mass sitting adjacent to the diagonal is the visual argument of Section 22.2. Place there.</p>
+<p><strong>Figure 22.2</strong> — <em>Predicted-versus-true class distribution,</em> grouped bars for true / Bayes-rule / Random Forest across the three classes. This single figure carries the central claim of the chapter. Place in Section 22.2.</p>
+<p><strong>Figure 22.3</strong> — <em><code>P(High)</code> against submitted <code>savings_rate</code>,</em> two lines: before the fix (non-monotone) and after (monotone decreasing). Generate by calling <code>predict()</code> across a sweep. Place in Section 22.4.</p>
+<p><strong>Figure 22.4</strong> — <em>Scatter of <code>savings_ratio</code> against <code>expense_ratio</code>,</em> showing the exact anti-diagonal. Shared with Figure 14.1; render once. Place in Section 22.5.</p>
+<p><strong>Table 22.1</strong> — <em>Per-class precision, recall and F1</em> for the tuned Random Forest, with support. Values in Section 23.2. Place at the start of Section 22.2.</p>
+</blockquote></body></html>

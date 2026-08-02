@@ -1,0 +1,78 @@
+<!doctype html><html><head><meta charset='utf-8'><title>05_research_gap</title><style>
+@page { size: A4; margin: 20mm 18mm 20mm 18mm; }
+@page :first { margin-top: 24mm; }
+html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+body {
+  font-family: "Charter", "Georgia", "Times New Roman", serif;
+  font-size: 10.5pt; line-height: 1.52; color: #14171a; margin: 0;
+  hyphens: auto; text-align: justify;
+}
+h1, h2, h3 { font-family: "Helvetica Neue", Arial, sans-serif; color: #0b0d0f; text-align: left; }
+h1 { font-size: 19pt; line-height: 1.2; margin: 0 0 1.1em; padding-bottom: .35em;
+     border-bottom: 2px solid #14171a; break-after: avoid; }
+h2 { font-size: 13pt; margin: 1.7em 0 .55em; break-after: avoid; }
+h3 { font-size: 11pt; margin: 1.3em 0 .45em; break-after: avoid; }
+p { margin: 0 0 .75em; orphans: 3; widows: 3; }
+strong { font-weight: 600; }
+a { color: #14171a; text-decoration: none; }
+
+/* Tables */
+table { border-collapse: collapse; width: 100%; margin: 1em 0 1.2em;
+        font-size: 9.2pt; break-inside: avoid; font-family: "Helvetica Neue", Arial, sans-serif; }
+thead { background: #f2f4f6; }
+th, td { border: 1px solid #ccd2d8; padding: 5px 8px; text-align: left; vertical-align: top; }
+th { font-weight: 600; }
+tbody tr:nth-child(even) { background: #fafbfc; }
+
+/* Code */
+code { font-family: "SF Mono", "Menlo", monospace; font-size: 8.8pt;
+       background: #f4f6f8; padding: 1px 4px; border-radius: 3px; }
+pre { background: #f7f9fa; border: 1px solid #e2e7ec; border-left: 3px solid #8b98a5;
+      padding: 9px 12px; border-radius: 3px; overflow-x: auto; break-inside: avoid;
+      font-size: 8.6pt; line-height: 1.42; text-align: left; }
+pre code { background: none; padding: 0; font-size: inherit; }
+
+/* Figure / screenshot callouts */
+blockquote { margin: .9em 0; padding: .6em .9em; background: #fffdf3;
+             border-left: 3px solid #d9b23a; font-size: 9.4pt; break-inside: avoid;
+             font-family: "Helvetica Neue", Arial, sans-serif; text-align: left; }
+blockquote p { margin: 0 0 .35em; }
+blockquote p:last-child { margin-bottom: 0; }
+
+/* Rendered mermaid diagrams */
+figure.diagram { margin: 1.2em 0; text-align: center; break-inside: avoid; page-break-inside: avoid; }
+figure.diagram svg { max-width: 100%; height: auto; }
+figure.diagram figcaption { font-size: 8.6pt; color: #5b6770; margin-top: .5em;
+                            font-family: "Helvetica Neue", Arial, sans-serif; }
+
+hr { border: none; border-top: 1px solid #dde2e7; margin: 1.6em 0; }
+ul, ol { margin: 0 0 .8em; padding-left: 1.4em; }
+li { margin-bottom: .22em; }
+.section-break { break-before: page; }
+</style></head><body><h1 id="5-research-gap">5. Research Gap</h1>
+<h2 id="51-preliminary-caution">5.1 Preliminary Caution</h2>
+<p>A research gap should be a statement about what the literature has not established, not a rhetorical device for making a student project appear necessary. Several of the gaps below are gaps this project identifies without closing, and one of them this project actively worsens. Saying so is more useful than the alternative.</p>
+<h2 id="52-gaps-in-the-literature">5.2 Gaps in the Literature</h2>
+<p><strong>G1 — Absence of ground truth for risk suitability.</strong> Credit scoring succeeds as a supervised problem because default is observed and eventually labelled [5]. A risk band has no analogous outcome: no institution records, years afterward, whether the band assigned to a client was the correct one. The literature offers validated <em>instruments</em> for eliciting risk tolerance [3] but no labelled corpus against which a predictive model of suitability could be fitted or falsified. Without such a corpus, supervised learning has nothing to learn from.</p>
+<p><em>This project does not close G1. It circumvents it, by generating a synthetic label whose definition its author chose. Section 24.5 explains why that circumvention forfeits every empirical claim about real behaviour, and Section 5.4 returns to it.</em></p>
+<p><strong>G2 — Conflation of capacity and tolerance.</strong> Klement's compilation treats the confusion between objective loss-bearing capacity and subjective loss-bearing willingness as endemic to deployed instruments [4]. Prospect theory implies the self-report half is the unreliable half, since stated risk attitude shifts with framing and with the reference point [1]. What is missing is an elicitation design that separates the two constructs and measures them independently.</p>
+<p><em>This project does not close G2 either. Its twenty-six parameters are overwhelmingly capacity-side, and Section 13.6 acknowledges as much.</em></p>
+<p><strong>G3 — Interaction effects are unrepresentable in additive rubrics.</strong> A rubric is a sum of independent terms and therefore, by construction, a model without interactions. The behavioural-finance literature is rich in conditional claims — that present bias is stronger under liquidity constraint, that loss aversion varies with prior gains [1], [2] — none of which an additive score can express. Tree ensembles represent interactions natively [9], [13].</p>
+<p><em>This project addresses G3, though the demonstration is weak: its synthetic label is a weighted sum with no interaction terms, so there was little interaction structure for the model to find. Section 22.2 shows the Random Forest recovering, in essence, a linear score.</em></p>
+<p><strong>G4 — Post-hoc explanation is assumed adequate without being audited.</strong> The explainability literature establishes that Shapley attribution is axiomatically well-founded [6] and exactly computable for trees [7]. Rudin objects that a post-hoc explanation is not the computation it describes, and may mislead while appearing authoritative [15]. What is largely missing is empirical scrutiny of whether explanation <em>pipelines</em>, as opposed to explanation <em>methods</em>, preserve the properties the method guarantees.</p>
+<p><em>This project contributes to G4, unintentionally and by counterexample. Section 21.4 documents an implementation whose SHAP values were correct on computation and then had their sign discarded before display, so the interface distinguished risk-increasing from risk-decreasing features over data in which no value was ever negative. The attribution method was sound. The pipeline around it was not, and nothing detected the difference.</em></p>
+<p><strong>G5 — Training-serving consistency is not part of the evaluation apparatus.</strong> Sculley and colleagues catalogue the maintenance hazards of production machine learning and observe that most of a deployed system is not the model [8]. The evaluation literature, however, measures models. A held-out test set drawn from the training pipeline certifies the estimator; it says nothing about the separate code path that will compute features for live users, and reports accuracy that live users do not receive.</p>
+<p><em>This project contributes evidence for G5. Section 22.4 documents five disagreements between the training and serving feature computations, each of which left every reported metric correct and every live prediction wrong.</em></p>
+<h2 id="53-what-the-gaps-imply">5.3 What the Gaps Imply</h2>
+<p>Taken together, G1 and G2 mean that a supervised risk-profiling system cannot presently be validated on real data, because neither the label nor a clean measurement of the target construct exists. This is not a gap a final-year project can close, and pretending otherwise would be dishonest.</p>
+<p>G3, G4 and G5 are tractable, and they concern the machinery rather than the science. They ask whether a learned model can represent what a rubric cannot, whether the explanation a user sees is the explanation the method computed, and whether the accuracy a report claims is the accuracy a user receives.</p>
+<h2 id="54-the-gap-this-project-addresses">5.4 The Gap This Project Addresses</h2>
+<p>The addressable gap, stated narrowly:</p>
+<blockquote>
+<p>Existing accounts of machine-learned risk profiling report model accuracy against a benchmark of perfect classification and assume, without verification, that the features computed at serving time match those computed at training time, and that the explanation displayed to the user preserves the semantics of the attribution method that produced it.</p>
+</blockquote>
+<p>Three commitments follow, and they organise the rest of this report.</p>
+<p>Accuracy is reported against a <strong>derived Bayes-optimal ceiling</strong> rather than against 1.0. Because the label's generating function is known — a consequence of the synthetic data whose costs Section 24.5 tallies — the maximum attainable accuracy can be computed exactly. It is 0.6104, and the model reaches 98.9% of it. An absolute figure of 60% conveys almost nothing; the same figure against its ceiling conveys most of what matters.</p>
+<p>Training–serving equivalence is <strong>verified rather than assumed</strong>, by routing training records through the serving preprocessor and comparing the resulting feature vectors column by column, and by checking that predictions agree on every held-out row.</p>
+<p>The explanation pipeline is <strong>audited end to end</strong>, from the SHAP call to the pixel the user sees. That audit is what exposed the sign-discarding defect of Section 21.4, which no test of the SHAP library and no test of the model could have found.</p>
+<p>None of these is a contribution to behavioural finance or to machine learning. Each is a contribution to the practice of building systems that make claims about people's money, and the honest summary of this project's ambition is that it is a systems result with a rigorous evaluation, not a scientific finding.</p></body></html>

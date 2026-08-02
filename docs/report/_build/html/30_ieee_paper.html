@@ -1,0 +1,208 @@
+<!doctype html><html><head><meta charset='utf-8'><title>30_ieee_paper</title><style>
+@page { size: A4; margin: 20mm 18mm 20mm 18mm; }
+@page :first { margin-top: 24mm; }
+html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+body {
+  font-family: "Charter", "Georgia", "Times New Roman", serif;
+  font-size: 10.5pt; line-height: 1.52; color: #14171a; margin: 0;
+  hyphens: auto; text-align: justify;
+}
+h1, h2, h3 { font-family: "Helvetica Neue", Arial, sans-serif; color: #0b0d0f; text-align: left; }
+h1 { font-size: 19pt; line-height: 1.2; margin: 0 0 1.1em; padding-bottom: .35em;
+     border-bottom: 2px solid #14171a; break-after: avoid; }
+h2 { font-size: 13pt; margin: 1.7em 0 .55em; break-after: avoid; }
+h3 { font-size: 11pt; margin: 1.3em 0 .45em; break-after: avoid; }
+p { margin: 0 0 .75em; orphans: 3; widows: 3; }
+strong { font-weight: 600; }
+a { color: #14171a; text-decoration: none; }
+
+/* Tables */
+table { border-collapse: collapse; width: 100%; margin: 1em 0 1.2em;
+        font-size: 9.2pt; break-inside: avoid; font-family: "Helvetica Neue", Arial, sans-serif; }
+thead { background: #f2f4f6; }
+th, td { border: 1px solid #ccd2d8; padding: 5px 8px; text-align: left; vertical-align: top; }
+th { font-weight: 600; }
+tbody tr:nth-child(even) { background: #fafbfc; }
+
+/* Code */
+code { font-family: "SF Mono", "Menlo", monospace; font-size: 8.8pt;
+       background: #f4f6f8; padding: 1px 4px; border-radius: 3px; }
+pre { background: #f7f9fa; border: 1px solid #e2e7ec; border-left: 3px solid #8b98a5;
+      padding: 9px 12px; border-radius: 3px; overflow-x: auto; break-inside: avoid;
+      font-size: 8.6pt; line-height: 1.42; text-align: left; }
+pre code { background: none; padding: 0; font-size: inherit; }
+
+/* Figure / screenshot callouts */
+blockquote { margin: .9em 0; padding: .6em .9em; background: #fffdf3;
+             border-left: 3px solid #d9b23a; font-size: 9.4pt; break-inside: avoid;
+             font-family: "Helvetica Neue", Arial, sans-serif; text-align: left; }
+blockquote p { margin: 0 0 .35em; }
+blockquote p:last-child { margin-bottom: 0; }
+
+/* Rendered mermaid diagrams */
+figure.diagram { margin: 1.2em 0; text-align: center; break-inside: avoid; page-break-inside: avoid; }
+figure.diagram svg { max-width: 100%; height: auto; }
+figure.diagram figcaption { font-size: 8.6pt; color: #5b6770; margin-top: .5em;
+                            font-family: "Helvetica Neue", Arial, sans-serif; }
+
+hr { border: none; border-top: 1px solid #dde2e7; margin: 1.6em 0; }
+ul, ol { margin: 0 0 .8em; padding-left: 1.4em; }
+li { margin-bottom: .22em; }
+.section-break { break-before: page; }
+</style></head><body><h1 id="30-ieee-format-research-paper">30. IEEE-Format Research Paper</h1>
+<blockquote>
+<p><strong>Formatting note.</strong> The text below is written to the IEEE conference template (two-column, 10 pt Times New Roman, <code>\documentclass[conference]{IEEEtran}</code>). Section numbering restarts here and is independent of the main report. Figure and table callouts are marked; sources for each are given in the note at the end.</p>
+</blockquote>
+<hr />
+<h1 id="evaluating-a-behavioural-risk-assessment-system-against-its-bayes-ceiling-explainability-serving-skew-and-a-negative-result">Evaluating a Behavioural Risk-Assessment System Against Its Bayes Ceiling: Explainability, Serving Skew, and a Negative Result</h1>
+<p><strong>Chirag Mali</strong>
+<em>Department of Computer Engineering</em>
+[Institution]
+[City, India]
+[email]</p>
+<hr />
+<h2 id="abstract">Abstract</h2>
+<p>Retail financial risk profiling remains dominated by questionnaires scored against fixed rubrics whose weights encode assumption rather than evidence and which, being additive, cannot represent interactions among a respondent's attributes. We replace the rubric with a tree-ensemble classifier and attempt to preserve per-answer transparency using Shapley attribution, then audit the resulting system end to end. On 22,000 synthetic records with twenty-six demographic, financial and lifestyle attributes, a tuned Random Forest attains accuracy 0.6039 and weighted F1 0.6006. Because the label is a threshold on a linear score perturbed by Gaussian noise of known scale, we derive the Bayes-optimal accuracy exactly: 0.6104. The model therefore reaches 98.9% of the attainable ceiling and 95.9% of the accuracy available above the majority-class baseline, and its predicted class distribution tracks the Bayes rule rather than the empirical one. We report a secondary model as a negative result: its target was generated conditioned on the risk band alone, bounding any classifier at 0.3675, and it scores 0.2586 against a 0.2869 baseline. Finally we characterise a class of defect invisible to model evaluation. Feature engineering implemented separately for training and for serving diverged in five places; every reported metric stayed correct while every live prediction was wrong, and all unit tests passed. We argue that verifying training–serving feature equivalence, and auditing the explanation pipeline rather than only the explanation method, belong in the standard evaluation apparatus.</p>
+<p><strong>Index Terms</strong> — behavioural finance, explainable AI, SHAP, Bayes-optimal accuracy, training–serving skew, negative results, synthetic data.</p>
+<hr />
+<h2 id="i-introduction">I. Introduction</h2>
+<p>Classical finance models the investor as an expected-utility maximiser. Kahneman and Tversky showed the description fails systematically: outcomes are evaluated as gains and losses against a reference point, losses weigh roughly twice as heavily as equivalent gains, and small probabilities are distorted [1]. Barberis and Thaler survey the consequences for market and individual behaviour [2].</p>
+<p>Institutions nonetheless place clients on a risk spectrum using questionnaires scored by fixed rubrics; Grable and Lytton's thirteen-item scale is the canonical validated instance [3]. Two weaknesses are structural. The weights are asserted rather than estimated, so where an analyst's beliefs are wrong the instrument is wrong identically for every respondent. And an additive score cannot express interaction — that a thin emergency fund is more dangerous for a sole earner with dependants. Klement's survey adds a third: deployed instruments routinely conflate risk <em>capacity</em>, a balance-sheet fact, with risk <em>tolerance</em>, a psychological disposition [4].</p>
+<p>Supervised learning addresses the first two. It is long established in credit scoring, where Lessmann <em>et al.</em> find tree ensembles consistently strongest [5]. It has not migrated to risk profiling, and the obstacle is not technical: a credit model predicts default, which is observed, whereas a risk band predicts suitability, which no institution ever labels.</p>
+<p>A learned model also forfeits the rubric's transparency. Lundberg and Lee unified additive attribution methods under the Shapley value [6]; an exact polynomial-time algorithm for tree ensembles [7] makes per-request attribution cheap. Rudin objects that a post-hoc explanation is not the computation it describes and may mislead while appearing authoritative [15].</p>
+<p>This paper contributes three results, none of which required a new algorithm.</p>
+<ol>
+<li><strong>Evaluation against a derived ceiling.</strong> Where a label's generating process is known, the Bayes-optimal accuracy is computable. We derive it (0.6104) and report the model's 0.6039 relative to it, rather than to unity.</li>
+<li><strong>A negative result, diagnosed at the source.</strong> A secondary classifier fails below its own majority baseline. Reading the generator — not further tuning — shows why no classifier could succeed.</li>
+<li><strong>A defect class invisible to model evaluation.</strong> Training and serving computed features differently in five places while all metrics and all tests remained green.</li>
+</ol>
+<hr />
+<h2 id="ii-related-work">II. Related Work</h2>
+<p><strong>Behavioural foundations.</strong> Prospect theory establishes reference dependence and loss aversion [1]; the survey literature catalogues overconfidence, herding and present bias as population regularities [2]. These are established by experiment, not as attributes inferable from a spending profile.</p>
+<p><strong>Measurement.</strong> Grable and Lytton validate an instrument psychometrically [3]. Klement documents the capacity/tolerance conflation as endemic [4].</p>
+<p><strong>Estimators.</strong> Breiman's Random Forest bounds generalisation error via tree strength and inter-tree correlation [9]. Gradient boosting refines this: XGBoost with a regularised objective and sparsity-aware splits [10], LightGBM with one-side sampling and histogram binning [11], CatBoost with ordered boosting against target leakage [12]. Grinsztajn <em>et al.</em> find tree ensembles still ahead of neural networks on tabular data, attributing the gap to robustness against uninformative features and a bias toward axis-aligned boundaries [13].</p>
+<p><strong>Explanation.</strong> LIME fits a local interpretable surrogate [14]. Lundberg and Lee show LIME and others are special cases of additive attribution, within which the Shapley value uniquely satisfies local accuracy, missingness and consistency [6]. <code>TreeExplainer</code> computes it exactly in polynomial time for trees [7]. Rudin argues against post-hoc explanation for high-stakes decisions [15].</p>
+<p><strong>Systems.</strong> Sculley <em>et al.</em> frame production ML maintenance as technical debt, observing that most of a deployed system is not the learning algorithm [8]. The evaluation literature measures models; the debt accrues elsewhere.</p>
+<hr />
+<h2 id="iii-data-and-method">III. Data and Method</h2>
+<h3 id="a-dataset">A. Dataset</h3>
+<p>No public dataset joins twenty-six demographic, financial and lifestyle attributes to a behavioural risk label, and Section VII argues no such label exists in principle. We therefore generate 22,000 records under a fixed seed with explicit conditional dependencies: income conditioned on occupation and education, expenses on income and dependants, credit score on debt burden and savings, and so forth.</p>
+<p>The risk label is a threshold on a continuous score,</p>
+<blockquote>
+<p><code>risk_score = −30·s + 25·(1 − c/900) + 20·min(d,5)/5 − 15·(e/20) + 10·[f &lt; 3] + ε</code></p>
+</blockquote>
+<p>with <code>s</code> savings rate, <code>c</code> credit score, <code>d</code> debt-to-income, <code>e</code> investment experience, <code>f</code> emergency-fund months, and <code>ε ~ N(0, 8)</code>. Cuts at the 35th and 80th percentiles give classes at 35 / 45 / 20.</p>
+<p><strong>The noise dominates.</strong> The deterministic component has standard deviation 7.642 against a noise standard deviation of 8.000 — a signal-to-noise variance ratio of 0.912.</p>
+<h3 id="b-preprocessing">B. Preprocessing</h3>
+<p>Missing values imputed; nine numeric columns clipped at 1.5 × IQR; five ordinal and six nominal columns encoded; seven features derived (three ratios, two composites, two others), yielding 48 model features from 61 columns. Every constant fitted here — ordinal maps, clip bounds, min–max ranges, medians — is persisted to a JSON artefact consumed at serving time, for reasons Section VI-C makes clear.</p>
+<h3 id="c-model-selection">C. Model Selection</h3>
+<p>Stratified 80/20 split under a fixed seed. Five classifiers trained with library defaults on the identical partition and compared on weighted F1, chosen over accuracy because a constant predictor achieves 0.45. The Random Forest led at F1 = 0.5949 and alone received a randomised hyperparameter search (20 candidates, 3-fold CV), reaching 0.6006.</p>
+<p><em>(Table I — model comparison.)</em></p>
+<h3 id="d-explanation">D. Explanation</h3>
+<p>Exact Shapley values via <code>TreeExplainer</code> [7]: globally by averaging absolute values across the test partition, locally per request for the submitted row.</p>
+<hr />
+<h2 id="iv-system">IV. System</h2>
+<p>A React/TypeScript client elicits the twenty-six attributes through a four-step form and holds no business logic. A FastAPI service validates against Pydantic schemas whose categorical fields are constrained to the exact training vocabulary, calls the inference module in-process (avoiding a cross-language serialisation boundary), persists inputs, prediction and attributions to PostgreSQL, and returns a probability vector. Three containers compose. Seven endpoints are documented by the same schemas that enforce them.</p>
+<p><em>(Fig. 1 — three-tier architecture and data flow.)</em></p>
+<hr />
+<h2 id="v-results">V. Results</h2>
+<h3 id="a-classification-performance">A. Classification Performance</h3>
+<p>Accuracy 0.6039, weighted F1 0.6006, one-vs-rest weighted ROC AUC 0.7461 on 4,400 held-out records. Five-fold CV F1 = 0.5996 ± 0.0032.</p>
+<p><em>(Table II — per-class precision, recall, F1.)</em></p>
+<p>Per class, <em>High</em> carries the highest precision (0.6898) and the lowest recall (0.4295).</p>
+<h3 id="b-the-bayes-ceiling">B. The Bayes Ceiling</h3>
+<p>Every quantity entering <code>risk_score</code> is available as a feature, so the deterministic component is exactly recoverable; <code>ε</code> is not. For a record with signal <code>s</code>, class probabilities follow from the noise CDF, and the Bayes-optimal rule takes their argmax. Recovering the thresholds numerically (<code>t₁ = −11.074</code>, <code>t₂ = 2.598</code>) so that induced proportions match the observed 35/45/20 and averaging the success probability over all records gives:</p>
+<table>
+<thead>
+<tr>
+<th>Reference</th>
+<th>Accuracy</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Majority class</td>
+<td>0.4500</td>
+</tr>
+<tr>
+<td><strong>Random Forest</strong></td>
+<td><strong>0.6039</strong></td>
+</tr>
+<tr>
+<td><strong>Bayes ceiling</strong></td>
+<td><strong>0.6104</strong></td>
+</tr>
+</tbody>
+</table>
+<p>The model attains <strong>98.9%</strong> of the ceiling and <strong>95.9%</strong> of the accuracy available above the baseline:
+<code>(0.6039 − 0.4500)/(0.6104 − 0.4500) = 0.9595</code>.</p>
+<p>Two checks indicate convergence on the Bayes <em>rule</em>, not merely on its accuracy. Near a noisy threshold the optimal rule retreats toward the central class, and the model reproduces this:</p>
+<table>
+<thead>
+<tr>
+<th>Class</th>
+<th>True</th>
+<th>Bayes</th>
+<th>Model</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Low</td>
+<td>35.0%</td>
+<td>32.9%</td>
+<td>31.4%</td>
+</tr>
+<tr>
+<td>Medium</td>
+<td>45.0%</td>
+<td>54.4%</td>
+<td>56.2%</td>
+</tr>
+<tr>
+<td>High</td>
+<td>20.0%</td>
+<td>12.7%</td>
+<td>12.5%</td>
+</tr>
+</tbody>
+</table>
+<p>And errors respect ordinal structure: 1,706 of 1,743 errors are between adjacent bands; only 37 records (0.84%) confuse <em>Low</em> with <em>High</em>.</p>
+<p><em>(Fig. 2 — accuracy against reference points. Fig. 3 — confusion matrix.)</em></p>
+<h3 id="c-a-negative-result">C. A Negative Result</h3>
+<p>A secondary Random Forest predicting investment preference across five classes scores accuracy 0.2586, weighted F1 0.1892, ROC AUC 0.4949 — below the 0.2869 majority baseline and at chance in ranking.</p>
+<p>The generator draws this label from one of three fixed probability vectors selected by <code>risk_category</code> alone; no feature enters. Hence</p>
+<blockquote>
+<p><code>ceiling | true band = Σₖ P(band = k)·max(pₖ) = 0.3675</code>,</p>
+</blockquote>
+<p>and ≈ 0.3210 given the 60.4%-accurate band the system can infer. No algorithm, tuning budget or additional feature could have succeeded. The diagnosis required reading the data generator, not running experiments.</p>
+<h3 id="d-trainingserving-skew">D. Training–Serving Skew</h3>
+<p>Feature engineering existed in two implementations. They disagreed on: the scale of <code>savings_rate</code> (fraction vs. percentage); the denominator of <code>debt_to_income_ratio</code> (annual vs. monthly income); the direction of <code>age_income_ratio</code>; the spelling and cardinality of four ordinal maps; and the formulae of both composite scores.</p>
+<p>The held-out set was evaluated through the training path. <strong>Every reported metric was correct. Every live prediction was wrong.</strong> Predicted risk was not monotone in the savings rate: a user reporting 10% was assessed <em>Medium</em> where the training scale placed them at <em>High</em>.</p>
+<p>The repair eliminated the duplication rather than fixing five instances: the training pipeline emits its fitted constants and the serving path reads them. Equivalence was then verified — 300 records agree across all thirteen derived features to 10⁻¹⁶, and predictions agree with the training-format path on every held-out row.</p>
+<h3 id="e-explanation-pipeline-failure">E. Explanation Pipeline Failure</h3>
+<p><code>TreeExplainer</code> returns signed, class-specific values. The serving code reduced them by <code>np.abs(sv[0]).mean(axis=1)</code> — absolute value, then averaged across classes. Across 120 attributions from twelve inputs, none was negative. The interface nonetheless captioned its chart <em>"Blue = increases risk, Red = decreases risk"</em>; no bar can ever be red.</p>
+<p>Separately, <code>savings_ratio</code> and <code>expense_ratio</code> are exact complements (r = −1.000000), and <code>savings_rate</code> a noisy third copy (r = 0.944), so one quantity occupies four of the five top-ranked features and its importance is split among them.</p>
+<p>The attribution <em>method</em> was sound. The <em>pipeline</em> was not, and nothing detected the difference — precisely the failure mode Rudin anticipates [15].</p>
+<hr />
+<h2 id="vi-discussion">VI. Discussion</h2>
+<p><strong>A. Sixty percent is not weak.</strong> Against unity it looks poor; against 0.6104 it is near-optimal. Reporting <code>A/A*</code> rather than <code>A</code> is available whenever a generating process is known, and is the discipline this paper presses.</p>
+<p><strong>B. Optimal accuracy, wrong objective.</strong> <em>High</em> recall of 0.4295 is the Bayes-optimal response to threshold noise — and the wrong operating point for a screening instrument, where under-warning is costlier than over-caution. Macro AUC (0.7712) exceeding weighted AUC (0.7461) shows the ranking information is present; thresholding <code>P(High)</code> below 0.5 would recover recall. A model can sit at its Bayes limit and still be misconfigured for its task.</p>
+<p><strong>C. Metrics do not see what breaks.</strong> Five of six defects lay not inside any function but in the <em>agreement between two representations of one computation</em> — two feature implementations, two spellings of a category, two endpoints of identical shape, a colour legend and the values it coloured. All eleven tests passed. Unit tests examine one representation. What found these was comparing representations: routing training rows through the serving preprocessor, reading the CSV as text rather than through <code>pandas</code>, asking whether any returned attribution was ever negative. This is the debt Sculley <em>et al.</em> describe [8], and we propose that a training–serving equivalence assertion belongs in the standard suite. Ours runs in under a minute and would have caught five of the six.</p>
+<hr />
+<h2 id="vii-limitations">VII. Limitations</h2>
+<p>The data is synthetic, and this forfeits every empirical claim. Recovered correlations are those the generator was written to contain. The project's own premise — that lifestyle spending reveals dispositions self-report conceals — is untestable here, because no lifestyle attribute enters <code>risk_score</code>; that none reaches the top ten SHAP ranks is a fact about the generator. The Bayes-ceiling analysis, our strongest contribution, exists only because the data is synthetic: the contribution and the limitation are one fact viewed twice.</p>
+<p>No ground truth for risk-band suitability exists even in principle, since no institution records whether an assigned band was later correct. The explanation defect of Section V-E is unrepaired, as correcting it invalidates the reported SHAP figures. No logistic baseline was fitted, so we cannot claim the non-linear model earned its complexity against a label that is a weighted sum. No calibration assessment and no latency benchmark were performed. The system has no authentication and is not deployable against real financial disclosures.</p>
+<hr />
+<h2 id="viii-conclusion">VIII. Conclusion</h2>
+<p>We built and audited an end-to-end behavioural risk-assessment system. The classifier reaches 98.9% of the Bayes-optimal accuracy its data permits, having converged on the Bayes decision rule rather than merely its accuracy. A secondary model is reported as a negative result, with a derivation showing its target carried no learnable structure. Most instructively, five defects that rendered every live prediction wrong left every reported metric correct and every test passing, because they lived in the agreement between two implementations rather than within either.</p>
+<p>We conclude that a held-out test set drawn from the training pipeline certifies the estimator and says nothing about the code that will serve it; that an explanation pipeline requires auditing separately from the explanation method it invokes; and that accuracy is uninterpretable without the ceiling against which it is read.</p>
+<hr />
+<h2 id="references">References</h2>
+<p><em>Use the fifteen entries of Section 29, unchanged and in the same order. Citation numbers in this paper correspond exactly.</em></p>
+<hr />
+<h2 id="preparation-note">Preparation Note</h2>
+<p><strong>Figures.</strong> Fig. 1 renders from the Mermaid source in Section 11. Fig. 2 is specified as Figure 23.3. Fig. 3 as Figure 22.1. A fourth figure — <code>P(High)</code> versus submitted <code>savings_rate</code>, before and after the skew repair (Figure 22.3) — is the most persuasive single artefact and should be included if space permits.</p>
+<p><strong>Tables.</strong> Table I from Section 15.4, annotating that the Random Forest row is the tuned model and the others are untuned. Table II from Section 23.2.</p>
+<p><strong>Length.</strong> As drafted this runs to roughly six pages in the IEEE conference template. Sections II and IV compress most readily; Sections V-B, V-C and V-D should not be cut, as they carry the contributions.</p>
+<p><strong>Before submission.</strong> Confirm the pagination gaps flagged in Section 29.1, resolve the page-range discrepancy in [1], and delete Section 29.1 itself.</p></body></html>
