@@ -31,5 +31,6 @@ data/processed/processed_dataset.csv
 .vscode/*
 !.vscode/extensions.json
 .idea/
+.claude/
 .DS_Store
 *.swp

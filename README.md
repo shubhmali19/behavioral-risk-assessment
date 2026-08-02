@@ -22,6 +22,7 @@
 - [Architecture](#architecture)
 - [Tech Stack](#tech-stack)
 - [Features](#features)
+- [Screenshots](#screenshots)
 - [Prerequisites](#prerequisites)
 - [Quick Start](#quick-start)
 - [API Reference](#api-reference)
@@ -110,6 +111,21 @@ Data Pipeline:
 - **Behavioral bias detection** — rule-based flags (e.g. overspending, under-insurance, low emergency reserves) with personalized recommendations
 - **Assessment history & analytics** — persisted results with an aggregate analytics dashboard
 - **Dockerized full stack** — frontend, backend, and database orchestrated via Docker Compose
+
+## Screenshots
+
+<table>
+<tr>
+<td width="50%"><img src="docs/screenshots/landing.png" alt="Landing page" /><br/><sub>Landing page</sub></td>
+<td width="50%"><img src="docs/screenshots/assessment-form.png" alt="Assessment form" /><br/><sub>Four-step assessment form</sub></td>
+</tr>
+<tr>
+<td width="50%"><img src="docs/screenshots/history.png" alt="Assessment history" /><br/><sub>Assessment history</sub></td>
+<td width="50%"><img src="docs/screenshots/analytics-dashboard.png" alt="Analytics dashboard" /><br/><sub>Analytics dashboard</sub></td>
+</tr>
+</table>
+
+<p align="center"><img src="docs/screenshots/results.png" alt="Risk assessment results with SHAP feature importance" width="70%" /><br/><sub>Results page — risk profile, SHAP feature importance, and personalized recommendations</sub></p>
 
 ## Prerequisites
 
@@ -251,6 +267,8 @@ Five classifiers, identical 80/20 stratified split (17,600 train / 4,400 test), 
 | Neural Network | 0.5332 | 0.5447 | 0.5332 | 0.5000 | 0.6550 |
 
 Bagging (Random Forest) beat boosting here because roughly half the label's variance is irreducible noise by construction — boosting's advantage is fitting residual structure across rounds, which becomes a liability when the residual is mostly noise. Full methodology and per-class breakdown are in [`docs/report/15_ml_model_selection.md`](docs/report/15_ml_model_selection.md) and [`docs/report/23_performance_metrics.md`](docs/report/23_performance_metrics.md).
+
+<p align="center"><img src="ml/plots/feature_importance.png" alt="Random Forest SHAP feature importance" width="75%" /><br/><sub>Top 20 features by mean absolute SHAP value — the tuned Random Forest risk model</sub></p>
 
 ## Project Structure
 
